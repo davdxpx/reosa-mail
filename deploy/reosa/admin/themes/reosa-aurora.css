@@ -1,0 +1,84 @@
+/* REOSA: Farben der Aurora-Sprache der Plattform (warme Flaechen, Blau nur als
+   Marke und Fokus). Quelle: reosa-docs/07-frontend/aurora-design-standard.md
+   im Repo der Plattform, Abschnitt 2. Nach jeder Aenderung contentHash in
+   registry.json neu rechnen (README, "Betrieb bei REOSA"). */
+:root {
+  --color-border: #e8e3d8;
+  --color-input: #e3ddd1;
+  --color-ring: #3b62e3;
+  --color-background: #f7f4ec;
+  --color-foreground: #25221b;
+  --color-primary: #2e55d4;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #efeadf;
+  --color-secondary-foreground: #25221b;
+  --color-muted: #efeadf;
+  --color-muted-foreground: #63594a;
+  --color-accent: #e8ebf5;
+  --color-accent-foreground: #2746ae;
+  --color-destructive: #b3412d;
+  --color-destructive-foreground: #ffffff;
+  --color-popover: #fdfbf6;
+  --color-popover-foreground: #25221b;
+  --color-sidebar: #f2eee4;
+  --color-sidebar-foreground: #25221b;
+  --color-sidebar-border: #e8e3d8;
+  --color-sidebar-accent: #e8ebf5;
+  --color-sidebar-accent-foreground: #2746ae;
+  --color-card: #fdfbf6;
+  --color-card-foreground: #25221b;
+  --color-success: #2e7a46;
+  --color-success-foreground: #ffffff;
+  --color-warning: #9a6a1f;
+  --color-warning-foreground: #ffffff;
+  --color-info: #2746ae;
+  --color-info-foreground: #ffffff;
+  --color-selection: #e1e7fa;
+  --color-selection-foreground: #2746ae;
+  --color-unread: #2e55d4;
+  --color-chart-1: #3b62e3;
+  --color-chart-2: #2e9e63;
+  --color-chart-3: #9a6a1f;
+  --color-chart-4: #b3412d;
+  --color-chart-5: #7b58d6;
+}
+.dark {
+  --color-border: #2a2620;
+  --color-input: #312d27;
+  --color-ring: #8fa8ff;
+  --color-background: #16130e;
+  --color-foreground: #ede8dc;
+  --color-primary: #3a5bcc;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #241f18;
+  --color-secondary-foreground: #ede8dc;
+  --color-muted: #1e1a13;
+  --color-muted-foreground: #8b8578;
+  --color-accent: #23253a;
+  --color-accent-foreground: #a9bdff;
+  --color-destructive: #e0705c;
+  --color-destructive-foreground: #16130e;
+  --color-popover: #241f18;
+  --color-popover-foreground: #ede8dc;
+  --color-sidebar: #1a1711;
+  --color-sidebar-foreground: #ede8dc;
+  --color-sidebar-border: #2a2620;
+  --color-sidebar-accent: #23253a;
+  --color-sidebar-accent-foreground: #a9bdff;
+  --color-card: #1e1a13;
+  --color-card-foreground: #ede8dc;
+  --color-success: #4cae72;
+  --color-success-foreground: #16130e;
+  --color-warning: #e8c87e;
+  --color-warning-foreground: #16130e;
+  --color-info: #8fa8ff;
+  --color-info-foreground: #16130e;
+  --color-selection: #2a3152;
+  --color-selection-foreground: #a9bdff;
+  --color-unread: #8fa8ff;
+  --color-chart-1: #8fa8ff;
+  --color-chart-2: #8ed9ac;
+  --color-chart-3: #e8c87e;
+  --color-chart-4: #e0705c;
+  --color-chart-5: #b99bf0;
+}

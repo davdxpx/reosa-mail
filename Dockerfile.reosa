@@ -1,0 +1,101 @@
+# REOSA: das Abbild fuer den Betrieb bei REOSA (README, "Betrieb bei REOSA").
+#
+# Eine Kopie von `Dockerfile` mit drei Unterschieden, damit das Original von
+# Bulwark unveraendert bleibt und Updates sich ohne Konflikt uebernehmen lassen:
+#
+#   1. Bau: Deutsch als Vorgabe-Sprache, Web Push aus (der eingebaute Relay
+#      ist ein Dienst eines Dritten), Commit fuer die Seite "Ueber".
+#   2. Laufzeit: sichere Vorgaben fuer jeden Schalter, der etwas an Dritte
+#      schickt oder Verwaltung von aussen erlaubt. Die Umgebung kann sie
+#      ueberschreiben, setzt sie bei REOSA aber nicht.
+#   3. Der Konfigurations-Ordner (Richtlinie und Theme) liegt im Abbild und ist
+#      nur lesbar; was sich zur Laufzeit aendert, liegt unter /app/data.
+#
+# Gebaut von compose.email.yml im Repo der Plattform, ueber einen entfernten
+# Build-Kontext mit fest gepinnter Fassung.
+
+FROM node:24-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_BASE_PATH=
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+ARG NEXT_PUBLIC_LOCALE_PREFIX=
+ENV NEXT_PUBLIC_LOCALE_PREFIX=$NEXT_PUBLIC_LOCALE_PREFIX
+# REOSA: Deutsch, wenn der Browser keine unterstuetzte Sprache nennt.
+ARG NEXT_PUBLIC_DEFAULT_LOCALE=de
+ENV NEXT_PUBLIC_DEFAULT_LOCALE=$NEXT_PUBLIC_DEFAULT_LOCALE
+# REOSA: Web Push aus (lib/push-relays.ts, WEB_PUSH_DISABLED).
+ARG NEXT_PUBLIC_PUSH_RELAY_URL=off
+ENV NEXT_PUBLIC_PUSH_RELAY_URL=$NEXT_PUBLIC_PUSH_RELAY_URL
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=$GIT_COMMIT
+RUN rm -rf "app/api/dev-jmap" && \
+    find . -path ./node_modules -prune -o \
+      \( -name __tests__ -o -name "*.test.ts" -o -name "*.test.tsx" \) \
+      -prune -exec rm -rf {} \; && \
+    npx next build --webpack
+
+FROM node:24-alpine AS runner
+
+LABEL org.opencontainers.image.title="Webmail (Fork von Bulwark Webmail)"
+LABEL org.opencontainers.image.description="Bulwark Webmail mit den Vorgaben fuer den Betrieb bei REOSA"
+LABEL org.opencontainers.image.source="https://github.com/davdxpx/reosa-mail"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk upgrade --no-cache && \
+    npm uninstall -g npm && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npx && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# REOSA: Richtlinie und Theme, nur lesbar (gehoert root, nicht nextjs).
+COPY deploy/reosa/admin /app/reosa/admin
+RUN mkdir -p /app/data/settings /app/data/admin-state /app/data/telemetry /app/data/version-check && \
+    chown -R nextjs:nodejs /app/data
+
+# REOSA: Ordner. Konfiguration aus dem Abbild, Zustand im Volume /app/data.
+ENV ADMIN_CONFIG_DIR=/app/reosa/admin \
+    ADMIN_CONFIG_READONLY=true \
+    ADMIN_STATE_DIR=/app/data/admin-state \
+    SETTINGS_DATA_DIR=/app/data/settings \
+    TELEMETRY_DATA_DIR=/app/data/telemetry \
+    VERSION_CHECK_DATA_DIR=/app/data/version-check
+# REOSA: nichts an Dritte. Keine Telemetrie, keine Suche nach Updates, keine
+# Uebersetzung ueber MyMemory, keine Symbole der Absender ueber DuckDuckGo,
+# keine Links zum Connector von Bulwark.
+ENV BULWARK_TELEMETRY=off \
+    BULWARK_UPDATE_CHECK=off \
+    TRANSLATE_PROXY=off \
+    SENDER_FAVICONS=off \
+    CONNECTOR_ENABLED=false
+# REOSA: ein Mailserver, keine Verwaltung von aussen. Kein eigener Server auf
+# der Anmeldeseite, keine Verwaltungs-Oberflaeche (ohne ADMIN_PASSWORD und mit
+# STALWART_ADMIN_ACCESS=off gibt es keinen Weg hinein), und keine Funktionen,
+# die am Mailserver vorbei Passwort oder zweiten Faktor eines Postfachs
+# aendern: Das Postfach-Passwort setzt die Plattform, und ihr Abgleich
+# ueberschriebe jede Aenderung hier.
+ENV ALLOW_CUSTOM_JMAP_ENDPOINT=false \
+    STALWART_ADMIN_ACCESS=off \
+    STALWART_FEATURES=false \
+    STALWART_JMAP_PASSTHROUGH_ENABLED=false \
+    SETTINGS_SYNC_ENABLED=true \
+    LOGIN_SHOW_VERSION=false \
+    LOGIN_SHOW_TOTP=false \
+    PWA_THEME_COLOR=#F7F4EC \
+    PWA_BACKGROUND_COLOR=#F7F4EC
+
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+CMD ["node", "server.js"]

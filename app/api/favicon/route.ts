@@ -448,6 +448,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // REOSA: `SENDER_FAVICONS=off` fragt nie bei DuckDuckGo nach. Die Domains der
+  // Absender gingen sonst an einen Dritten (README, "Betrieb bei REOSA").
+  if ((process.env.SENDER_FAVICONS ?? '').trim().toLowerCase() === 'off') {
+    return new NextResponse(TRANSPARENT_PNG, { headers: MISSING_FAVICON_HEADERS });
+  }
+
   // Resolve to root domain so subdomains share the same favicon lookup
   const normalizedDomain = getRootDomain(domain.toLowerCase());
   const refreshAfter = parseRefreshAfter(request.nextUrl.searchParams.get('v'));

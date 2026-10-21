@@ -9,6 +9,12 @@ import type { PushRelayOption, SettingsPolicy } from '@/lib/admin/types';
 export const DEFAULT_RELAY_BASE_URL =
   process.env.NEXT_PUBLIC_PUSH_RELAY_URL || 'https://notifications.relay.bulwarkmail.org';
 
+// REOSA: `NEXT_PUBLIC_PUSH_RELAY_URL=off` schaltet Web Push ganz ab. Der
+// eingebaute Relay ist ein Dienst eines Dritten; ohne eigenen Relay bietet
+// das Webmail Push gar nicht erst an (README, "Betrieb bei REOSA").
+export const WEB_PUSH_DISABLED =
+  (process.env.NEXT_PUBLIC_PUSH_RELAY_URL ?? '').trim().toLowerCase() === 'off';
+
 export type PushRelayPolicy = Partial<
   Pick<SettingsPolicy, 'pushRelays' | 'pushRelayUrl' | 'pushRelayUrlLocked'>
 >;

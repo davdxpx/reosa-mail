@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { SourceCodeLink } from "@/components/reosa/source-code-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore, consumeSignedOut } from "@/stores/auth-store";
@@ -1099,6 +1100,8 @@ function LoginPageContent() {
                 )}
               </div>
             )}
+            {/* REOSA: AGPL-3.0 Abschnitt 13, sichtbar auf der Anmeldeseite */}
+            <SourceCodeLink className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
             {loginShowVersion && <VersionBadge />}
           </div>
         </div>
@@ -1677,6 +1680,8 @@ function LoginPageContent() {
               )}
             </div>
           )}
+          {/* REOSA: AGPL-3.0 Abschnitt 13, sichtbar auf der Anmeldeseite */}
+          <SourceCodeLink className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
           {loginShowVersion && <VersionBadge />}
         </div>
       </div>

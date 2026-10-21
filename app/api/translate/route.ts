@@ -261,6 +261,12 @@ async function translateLibre(
 // ─── Route ────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  // REOSA: `TRANSLATE_PROXY=off` schaltet den Weg ab. Ohne LibreTranslate ginge
+  // der Text einer Mail an den oeffentlichen Dienst MyMemory, also an einen
+  // Dritten (README, "Betrieb bei REOSA").
+  if ((process.env.TRANSLATE_PROXY ?? '').trim().toLowerCase() === 'off') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   // CSRF gate (GHSA-9mvj-98f5-9q6g): this handler acts with the caller's
   // session cookie, which SameSite=Lax still sends from a same-site page.
   const crossOrigin = rejectCrossOriginRequest(request);
