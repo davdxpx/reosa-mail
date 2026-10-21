@@ -1,0 +1,124 @@
+# REOSA: das Abbild für den Betrieb bei REOSA (README, „Betrieb bei REOSA“,
+# Änderungslandkarte: deploy/reosa/OVERLAY.md).
+#
+# Eine Kopie von `Dockerfile` (Stand Bulwark 1.20.0) mit drei Unterschieden,
+# damit das Original von Bulwark unverändert bleibt und Updates sich ohne
+# Konflikt übernehmen lassen. Jeder Bau-Schritt von `Dockerfile` steht hier
+# wörtlich; der Vertragstest `lib/reosa/__tests__/overlay-contract.test.ts`
+# bricht, wenn Upstream einen Schritt ergänzt, der hier fehlt.
+#
+#   1. Bau: Deutsch als Vorgabe-Sprache, Commit für die Seite „Über“.
+#   2. Laufzeit: sichere Vorgaben für jeden Schalter, der etwas an Dritte
+#      schickt, Verwaltung von außen erlaubt oder eine Anmeldung am Mailserver
+#      vorbei öffnet. Die Umgebung kann sie überschreiben, setzt sie bei REOSA
+#      aber nicht; die Anmeldung über die Plattform schaltet REOSA_SSO_REQUIRED.
+#   3. Der Konfigurations-Ordner (Richtlinie und Theme) liegt im Abbild und ist
+#      nur lesbar; was sich zur Laufzeit ändert, liegt unter /app/data.
+#
+# Gebaut von compose.email.yml im Repo der Plattform, über einen entfernten
+# Build-Kontext am gepinnten Commit des Zweigs `reosa/integration`.
+
+FROM node:24-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_BASE_PATH=
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+ARG NEXT_PUBLIC_LOCALE_PREFIX=
+ENV NEXT_PUBLIC_LOCALE_PREFIX=$NEXT_PUBLIC_LOCALE_PREFIX
+# REOSA: Deutsch, wenn der Browser keine unterstützte Sprache nennt.
+ARG NEXT_PUBLIC_DEFAULT_LOCALE=de
+ENV NEXT_PUBLIC_DEFAULT_LOCALE=$NEXT_PUBLIC_DEFAULT_LOCALE
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=$GIT_COMMIT
+# REOSA: keine Source-Maps für einen Fehler-Dienst.
+ARG BULWARK_SOURCE_MAPS=0
+ENV BULWARK_SOURCE_MAPS=$BULWARK_SOURCE_MAPS
+RUN rm -rf "app/api/dev-jmap" && \
+    find . -path ./node_modules -prune -o \
+      \( -name __tests__ -o -name "*.test.ts" -o -name "*.test.tsx" \) \
+      -prune -exec rm -rf {} \; && \
+    node scripts/build-pst-worker.mjs && \
+    node scripts/build-plugin-sandbox.mjs && \
+    npx next build --webpack
+# Wie bei Bulwark: keine Map gelangt ins Abbild, sonst scheitert der Bau.
+RUN node scripts/sourcemaps.mjs collect --out /sourcemaps .next/static .next/standalone && \
+    node scripts/sourcemaps.mjs check .next/static .next/standalone public
+
+FROM node:24-alpine AS runner
+
+LABEL org.opencontainers.image.title="Webmail (Fork von Bulwark Webmail)"
+LABEL org.opencontainers.image.description="Bulwark Webmail mit den Vorgaben für den Betrieb bei REOSA"
+LABEL org.opencontainers.image.source="https://github.com/davdxpx/reosa-mail"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-only"
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk upgrade --no-cache && \
+    npm uninstall -g npm && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npx && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+# Wie bei Bulwark: Die Anwendung gehört root und ist für den Laufzeit-Benutzer
+# nur lesbar; er schreibt nur in den Cache von Next und die Daten-Ordner.
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/scripts/healthcheck.mjs ./healthcheck.mjs
+# REOSA: Richtlinie und Theme, nur lesbar (gehört root, nicht nextjs).
+COPY deploy/reosa/admin /app/reosa/admin
+RUN mkdir -p /app/.next/cache /app/data/settings /app/data/admin /app/data/admin-state \
+      /app/data/telemetry /app/data/plugin-secrets /app/data/version-check && \
+    chmod 700 /app/data/plugin-secrets && \
+    chown -R nextjs:nodejs /app/.next/cache /app/data
+
+# REOSA: Ordner. Konfiguration aus dem Abbild, Zustand im Volume /app/data.
+ENV ADMIN_CONFIG_DIR=/app/reosa/admin \
+    ADMIN_CONFIG_READONLY=true \
+    ADMIN_STATE_DIR=/app/data/admin-state \
+    SETTINGS_DATA_DIR=/app/data/settings \
+    TELEMETRY_DATA_DIR=/app/data/telemetry \
+    VERSION_CHECK_DATA_DIR=/app/data/version-check
+# REOSA: nichts an Dritte. NO_THIRD_PARTY_TRAFFIC ist der Schalter von
+# Bulwark für genau das (Telemetrie, Update-Prüfung, Push-Relay, Verzeichnis
+# der Erweiterungen, Symbole der Absender, Übersetzung über MyMemory, Karten,
+# WKD, Beispiel-Bilder) und ersetzt die früheren eigenen Schalter
+# TRANSLATE_PROXY, SENDER_FAVICONS und NEXT_PUBLIC_PUSH_RELAY_URL=off. Die
+# einzelnen Schalter bleiben zusätzlich aus.
+ENV NO_THIRD_PARTY_TRAFFIC=true \
+    BULWARK_TELEMETRY=off \
+    BULWARK_UPDATE_CHECK=off \
+    CONNECTOR_ENABLED=false
+# REOSA: ein Mailserver, keine Verwaltung von außen. Kein eigener Server auf
+# der Anmeldeseite, keine Verwaltungs-Oberfläche (ohne ADMIN_PASSWORD und mit
+# STALWART_ADMIN_ACCESS=off gibt es keinen Weg hinein), und keine Funktionen,
+# die am Mailserver vorbei Passwort oder zweiten Faktor eines Postfachs
+# ändern: Das Postfach-Passwort setzt die Plattform, und ihr Abgleich
+# überschriebe jede Änderung hier.
+ENV ALLOW_CUSTOM_JMAP_ENDPOINT=false \
+    STALWART_ADMIN_ACCESS=off \
+    STALWART_FEATURES=false \
+    STALWART_JMAP_PASSTHROUGH_ENABLED=false \
+    SETTINGS_SYNC_ENABLED=true \
+    SETTINGS_RETENTION_DAYS=180 \
+    LOGIN_SHOW_VERSION=false \
+    LOGIN_SHOW_TOTP=false \
+    PWA_THEME_COLOR=#F7F4EC \
+    PWA_BACKGROUND_COLOR=#F7F4EC
+# REOSA: Anmeldung nur über die Plattform (lib/reosa/sso-gate.ts). Mit `true`
+# schließt der Server jeden anderen Weg (Passwort, Token, Kopplung, Wechsel
+# des Kontos) und startet die Anmeldung ohne eigene Seite. Fehlt dann die
+# Konfiguration des Ausstellers, meldet sich niemand an (fail closed).
+ENV REOSA_SSO_REQUIRED=false
+
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ARG NEXT_PUBLIC_BASE_PATH=
+ENV BULWARK_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD ["node", "healthcheck.mjs"]
+CMD ["node", "server.js"]

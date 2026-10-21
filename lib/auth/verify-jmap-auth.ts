@@ -6,6 +6,7 @@ import {
 } from '@/lib/security/url-guard';
 import { forwardedClientHeaders } from '@/lib/auth/client-address';
 import { observeUpstream } from '@/lib/metrics/upstream';
+import { toInternalJmapUrl } from '@/lib/reosa/internal-jmap-url'; // REOSA
 
 const VERIFY_TIMEOUT_MS = 10000;
 const MAX_REDIRECTS = 3;
@@ -366,7 +367,7 @@ async function fetchIdentityEmails(
     const response = await observeUpstream('stalwart', async (trace) => {
       const init = { ...requestInit, headers: { ...requestInit.headers, ...trace } };
       return options.trusted
-        ? await fetch(apiUrl, { ...init, redirect: 'manual' })
+        ? await fetch(toInternalJmapUrl(apiUrl), { ...init, redirect: 'manual' }) // REOSA
         : await fetchPublicUrl(apiUrl, init);
     });
     if (!response.ok) {
@@ -444,7 +445,7 @@ async function fetchVerifiedSession(
       response = await observeUpstream('stalwart', async (trace) => {
         const init = { ...requestInit, headers: { ...requestInit.headers, ...trace } };
         return options.trusted
-          ? await fetch(target, { ...init, redirect: 'manual' })
+          ? await fetch(toInternalJmapUrl(target), { ...init, redirect: 'manual' }) // REOSA
           : await fetchPublicUrl(target, init);
       });
 

@@ -20,6 +20,7 @@ import { logger } from '@/lib/logger';
 import { parseJmapServers, resolveTrustedJmapUrl } from '@/lib/admin/jmap-servers';
 import { fetchPublicUrl, type PublicFetchResponse } from '@/lib/security/url-guard';
 import { observeUpstream } from '@/lib/metrics/upstream';
+import { toInternalJmapUrl } from '@/lib/reosa/internal-jmap-url'; // REOSA
 import {
   isStoredCredentialRefused,
   recordStoredCredentialStatus,
@@ -101,7 +102,8 @@ async function fetchUnbudgeted(
   // as it likes. Callers with their own signal keep it.
   const init: ServerFetchInit = givenInit.signal ? givenInit : { ...givenInit, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) };
   if (trusted !== false) {
-    return fetch(url, init);
+    // REOSA: im Stapel über das interne Netz statt über den öffentlichen Namen.
+    return fetch(toInternalJmapUrl(url), init);
   }
 
   const { redirect, headers: initHeaders, ...rest } = init;
