@@ -221,6 +221,10 @@ Alles andere bringt `Dockerfile.reosa` als sichere Vorgabe mit.
 
 Filterregeln (Sieve), Abwesenheitsnotiz, Kalender und Kontakte bleiben, soweit Stalwart sie anbietet.
 
+### Einstellungen auf dem Server
+
+Bulwark legt die Einstellungen einer Person (darunter Signaturen und Vorlagen) verschlüsselt unter `SETTINGS_DATA_DIR` ab, eine Datei je Anmeldename und Server, und löscht sie von sich aus nie. Löscht die Plattform ein Postfach, erfährt das Webmail davon nichts, und wer den Namen später neu bekäme, lüde die alten Einstellungen. Deshalb zählt jedes Laden als Nutzung, und was `SETTINGS_RETENTION_DAYS` Tage (Vorgabe in `Dockerfile.reosa`: 180) nicht genutzt wurde, löscht das Webmail beim Start und danach täglich (`lib/reosa/settings-retention.ts`). Die Frist liegt weit vor einer neuen Vergabe des Namens, frühestens 24 Monate nach dem Ende. `off` schaltet das Löschen ab; die Datenschutzerklärung der Plattform nennt die 180 Tage.
+
 ### Aussehen
 
 Theme `reosa-aurora` (`deploy/reosa/admin/themes/`): die Farben der Aurora-Sprache der Plattform, Hanken Grotesk, als Vorgabe der Richtlinie. Name, Logos und Links kommen aus der Umgebung, nie aus dem Code. Nach einer Änderung an der CSS die Prüfsumme `contentHash` in `registry.json` neu rechnen; `lib/reosa/__tests__/deploy-files.test.ts` bricht sonst.

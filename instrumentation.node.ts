@@ -70,6 +70,11 @@ migrateLegacyAdminLayout()
     const { startScheduler } = await import("./lib/version-check");
     await startScheduler();
   })
+  .then(async () => {
+    // REOSA: ungenutzte Einstellungen loeschen (lib/reosa/settings-retention.ts).
+    const { startSettingsRetention } = await import("./lib/reosa/settings-retention");
+    startSettingsRetention();
+  })
   .catch((err) => {
     console.warn("Admin dashboard init skipped:", err instanceof Error ? err.message : err);
   });

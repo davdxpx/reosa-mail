@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { logger } from '@/lib/logger';
 import { getSessionSecret } from '@/lib/auth/session-secret';
+import { markSettingsUsed } from '@/lib/reosa/settings-retention'; // REOSA
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -57,6 +58,7 @@ export async function loadUserSettings(username: string, serverUrl: string): Pro
 
   try {
     const data = await readFile(filePath);
+    void markSettingsUsed(filePath); // REOSA: Laden zaehlt als Nutzung (lib/reosa/settings-retention.ts)
     if (data.length < IV_LENGTH + TAG_LENGTH) return null;
 
     const key = getKey();
