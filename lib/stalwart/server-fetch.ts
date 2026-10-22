@@ -18,6 +18,7 @@
 import { configManager } from '@/lib/admin/config-manager';
 import { parseJmapServers, resolveTrustedJmapUrl } from '@/lib/admin/jmap-servers';
 import { fetchPublicUrl, type PublicFetchResponse } from '@/lib/security/url-guard';
+import { toInternalJmapUrl } from '@/lib/reosa/internal-jmap-url';
 
 const MAX_REDIRECTS = 5;
 /** Deadline for one upstream request when the caller sets none. */
@@ -66,7 +67,8 @@ export async function fetchJmapServer(
   // as it likes. Callers with their own signal keep it.
   const init: ServerFetchInit = givenInit.signal ? givenInit : { ...givenInit, signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) };
   if (trusted !== false) {
-    return fetch(url, init);
+    // REOSA: im Stapel ueber das interne Netz statt ueber den oeffentlichen Namen.
+    return fetch(toInternalJmapUrl(url), init);
   }
 
   const { redirect, headers: initHeaders, ...rest } = init;

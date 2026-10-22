@@ -17,6 +17,8 @@
   <a href="https://discord.gg/tYCujymGrT">Discord</a>
 </p>
 
+> **Fork für REOSA.** Dieses Repository (`davdxpx/reosa-mail`) ist ein Fork von Bulwark Webmail für das Webmail der Plattform REOSA. Was hier anders ist und wie es betrieben wird, steht unten unter [Betrieb bei REOSA](#betrieb-bei-reosa). Alles andere in dieser Datei ist die Beschreibung von Bulwark.
+
 Bulwark Webmail is a self-hosted webmail client for [Stalwart Mail Server](https://stalw.art/). It talks to Stalwart over JMAP and puts mail, calendar, contacts and files behind one login, with one set of settings and one admin dashboard.
 
 <p align="center">
@@ -160,3 +162,78 @@ Contributors can use AI tools too, as long as they use capable, current models a
 ## Acknowledgments
 
 Thanks to [root-fr/jmap-webmail](https://github.com/root-fr/jmap-webmail/) and [@ma2t](https://github.com/ma2t) for the groundwork this project builds upon.
+
+## Betrieb bei REOSA
+
+Das Webmail der Plattform unter `mail.<domain>` (Owner-Entscheidung E11, Namen nach E17; Spec im Repo der Plattform: `reosa-docs/30-email/06-mailboxes.md` und `08-operations.md`). Es zeigt Personen ihr eigenes Postfach auf dem Mailserver Stalwart, sonst nichts.
+
+### Drei Grenzen
+
+1. **Eigene Origin.** Das Webmail läuft nie in einer Sitzung der Konsole oder von REOSA Sales. Fremdes HTML neben einer Sitzung der Plattform wäre die größte Angriffsfläche eines Webmails.
+2. **Nur JMAP mit Stalwart.** Kein Zugang zur Datenbank der Plattform, kein Verwaltungs-Zugang zum Mailserver, kein Schlüssel, der fremde Postfächer öffnet (die Impersonation von Bulwark bleibt aus, `BULWARK_JWT_AUTH_SECRET` und `BULWARK_STALWART_MASTER_*` werden nie gesetzt).
+3. **Nur das Postfach der angemeldeten Person.** Funktionsadressen bleiben Arbeitslisten in der Konsole der Plattform.
+
+### Wie es läuft
+
+Als vierter Dienst `webmail` der Deploy-Einheit `compose.email.yml` im Repo der Plattform, neben `email`, `stalwart` und `clamav`. Gebaut wird `Dockerfile.reosa` aus diesem Repo über einen entfernten Build-Kontext mit fest gepinntem Commit; eine neue Fassung ist ein Commit hier und danach eine angehobene Kennung in `tooling/scripts/compose-units.ts` der Plattform (`bun gen:compose`). Traefik beendet TLS für `mail.<domain>` (HTTP-Router, Domain am Dienst in Coolify, Port 3000). Lebenszeichen: `/api/health` (`HEALTHCHECK` im Abbild).
+
+### Anmeldung
+
+Mit der Adresse des Postfachs und dem **Postfach-Passwort**, das die Person in ihrem Konto der Plattform festlegt (dasselbe wie in Mailprogrammen). Eine Anmeldung über die Plattform (SSO) ist gemessen und offen: Stalwart 0.16.24 nimmt Tokens eines fremden Ausstellers nur an, wenn ein OIDC-Verzeichnis das Verzeichnis ALLER Anmeldungen ist, und dann scheitert jede Anmeldung mit Passwort, auch die der Dienstkonten und der Mailprogramme (Messung und Wege: E18 in `reosa-docs/30-email/11-open-decisions.md`).
+
+### JMAP: zwei Wege
+
+| Wer | Adresse | Warum |
+|---|---|---|
+| Browser | `JMAP_SERVER_URL` = `https://<REOS_MAIL_HOSTNAME>` (Traefik reicht TLS roh an Stalwart durch) | Stalwart erlaubt JMAP aus dem Browser nur der Origin `https://mail.<domain>` (feste CORS-Kopfzeilen im Plan des Mailservers, gemessen auch an 204, 307 und 401) |
+| Server des Webmails | `JMAP_SERVER_INTERNAL_URL` = `http://stalwart:8080` im Netz des Stapels | Über den öffentlichen Namen käme der Container mit einer privaten Absenderadresse an, und Stalwart weist auf 443 jede Verbindung aus einem privaten Netz ab (`403`). |
+
+Die Sitzung von Stalwart nennt absolute Adressen mit dem öffentlichen Namen (`https://<REOS_MAIL_HOSTNAME>/jmap/`). Der Browser nimmt sie so, der Server legt sie zuerst auf die geprüfte Origin um (`rebaseApiUrl` von Bulwark) und schreibt sie beim Abruf auf die interne Adresse um (`lib/reosa/internal-jmap-url.ts`). Umgeschrieben wird nur, was auf die Origin von `JMAP_SERVER_URL` zielt.
+
+### Umgebung, die die Plattform setzt
+
+| Variable | Wert bei REOSA |
+|---|---|
+| `JMAP_SERVER_URL` | `https://${REOS_MAIL_HOSTNAME}` |
+| `JMAP_SERVER_INTERNAL_URL` | `http://stalwart:8080` |
+| `APP_NAME`, `APP_SHORT_NAME`, `APP_DESCRIPTION` | aus dem Produktnamen der Plattform (`REOSA_BRAND_PRODUCT_NAME`) |
+| `LOGIN_COMPANY_NAME` | `REOSA_BRAND_LEGAL_ENTITY` |
+| `LOGIN_WEBSITE_URL`, `LOGIN_IMPRINT_URL`, `LOGIN_PRIVACY_POLICY_URL` | Startseite, `/legal/imprint`, `/legal/privacy` unter `REOSA_BRAND_APEX_DOMAIN` |
+| `FAVICON_URL`, `PWA_ICON_URL`, Logos | `https://<apex>/icon.svg` der Plattform |
+| `SOURCE_CODE_URL` | dieses Repo am gebauten Commit (AGPL-3.0 Abschnitt 13) |
+| `GIT_COMMIT` (Bau) | der gebaute Commit, sichtbar unter Einstellungen > Über |
+
+Alles andere bringt `Dockerfile.reosa` als sichere Vorgabe mit.
+
+### Was abgeschaltet ist, und warum
+
+| Schalter | Vorgabe in `Dockerfile.reosa` | Grund |
+|---|---|---|
+| Telemetrie, Suche nach Updates | `BULWARK_TELEMETRY=off`, `BULWARK_UPDATE_CHECK=off` | nichts an Dritte |
+| Übersetzung | `TRANSLATE_PROXY=off` (eigener Schalter) | ohne LibreTranslate ginge der Text einer Mail an MyMemory |
+| Symbole der Absender | `SENDER_FAVICONS=off` (eigener Schalter), in der Richtlinie fest aus | die Domains der Absender gingen an DuckDuckGo |
+| Web Push | `NEXT_PUBLIC_PUSH_RELAY_URL=off` beim Bau (eigener Schalter) | der eingebaute Relay ist ein Dienst eines Dritten |
+| Connector von Bulwark | `CONNECTOR_ENABLED=false` | kein fremder Name in Links |
+| Eigener Server auf der Anmeldeseite | `ALLOW_CUSTOM_JMAP_ENDPOINT=false` | genau ein Mailserver |
+| Verwaltungs-Oberfläche | `STALWART_ADMIN_ACCESS=off`, kein `ADMIN_PASSWORD` | ohne beides gibt es keinen Weg hinein; mit `JMAP_SERVER_URL` bleibt auch der Einrichtungs-Assistent aus |
+| Passwort, zweiter Faktor, App-Passwörter am Mailserver | `STALWART_FEATURES=false`, `STALWART_JMAP_PASSTHROUGH_ENABLED=false` | das Postfach-Passwort setzt die Plattform; ihr Abgleich überschriebe jede Änderung hier |
+| Erweiterungen, eigene Themes, eingebettete Seiten | Richtlinie `deploy/reosa/admin/policy.json` | keine Erweiterungen von außen |
+
+Filterregeln (Sieve), Abwesenheitsnotiz, Kalender und Kontakte bleiben, soweit Stalwart sie anbietet.
+
+### Einstellungen auf dem Server
+
+Bulwark legt die Einstellungen einer Person (darunter Signaturen und Vorlagen) verschlüsselt unter `SETTINGS_DATA_DIR` ab, eine Datei je Anmeldename und Server, und löscht sie von sich aus nie. Löscht die Plattform ein Postfach, erfährt das Webmail davon nichts, und wer den Namen später neu bekäme, lüde die alten Einstellungen. Deshalb zählt jedes Laden als Nutzung, und was `SETTINGS_RETENTION_DAYS` Tage (Vorgabe in `Dockerfile.reosa`: 180) nicht genutzt wurde, löscht das Webmail beim Start und danach täglich (`lib/reosa/settings-retention.ts`). Die Frist liegt weit vor einer neuen Vergabe des Namens, frühestens 24 Monate nach dem Ende. `off` schaltet das Löschen ab; die Datenschutzerklärung der Plattform nennt die 180 Tage.
+
+### Aussehen
+
+Theme `reosa-aurora` (`deploy/reosa/admin/themes/`): die Farben der Aurora-Sprache der Plattform, Hanken Grotesk, als Vorgabe der Richtlinie. Name, Logos und Links kommen aus der Umgebung, nie aus dem Code. Nach einer Änderung an der CSS die Prüfsumme `contentHash` in `registry.json` neu rechnen; `lib/reosa/__tests__/deploy-files.test.ts` bricht sonst.
+
+### Eigene Änderungen und Abgleich mit Bulwark
+
+Eigene Änderungen sind klein und mit `REOSA` markiert (`git grep -n REOSA`), damit Updates von Bulwark übernehmbar bleiben:
+
+- `Dockerfile.reosa`, `deploy/reosa/`, `lib/reosa/`, `components/reosa/`, `CLAUDE.md` (eigene Dateien)
+- `lib/stalwart/server-fetch.ts`, `lib/auth/verify-jmap-auth.ts` (interne Adresse), `lib/push-relays.ts`, `lib/web-push.ts` (Push aus), `app/api/translate/route.ts`, `app/api/favicon/route.ts` (Schalter), `app/(main)/[locale]/login/page.tsx` (Link „Quelltext“), `locales/de/common.json` (eine Zeile)
+
+Abgleich: `git remote add upstream https://github.com/bulwarkmail/webmail.git`, `git fetch upstream --tags`, auf einem Zweig `git merge <tag>`, Konflikte nur in den markierten Stellen auflösen, `npm run lint`, `npm run typecheck`, `npx vitest run`. Danach einen Tag setzen und den Commit in der Plattform anheben.

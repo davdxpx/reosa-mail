@@ -5,6 +5,7 @@ import {
   type PublicFetchResponse,
 } from '@/lib/security/url-guard';
 import { forwardedClientHeaders } from '@/lib/auth/client-address';
+import { toInternalJmapUrl } from '@/lib/reosa/internal-jmap-url';
 
 const VERIFY_TIMEOUT_MS = 10000;
 const MAX_REDIRECTS = 3;
@@ -328,7 +329,7 @@ async function fetchIdentityEmails(
     // No redirect handling here: a redirect on the POST would downgrade it to
     // a GET and can only come from a misconfigured proxy - treat as failure.
     const response = options.trusted
-      ? await fetch(apiUrl, { ...requestInit, redirect: 'manual' })
+      ? await fetch(toInternalJmapUrl(apiUrl), { ...requestInit, redirect: 'manual' }) // REOSA
       : await fetchPublicUrl(apiUrl, requestInit);
     if (!response.ok) {
       throw new JmapAuthVerificationError(
@@ -402,7 +403,7 @@ async function fetchVerifiedSession(
       // fetch so the address validated above is the one the socket uses.
       // Admin-configured servers may legitimately live on private addresses.
       response = options.trusted
-        ? await fetch(currentUrl, { ...requestInit, redirect: 'manual' })
+        ? await fetch(toInternalJmapUrl(currentUrl), { ...requestInit, redirect: 'manual' }) // REOSA
         : await fetchPublicUrl(currentUrl, requestInit);
 
       if (response.status >= 300 && response.status < 400) {

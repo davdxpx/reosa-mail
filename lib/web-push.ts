@@ -6,7 +6,7 @@
 
 import type { IJMAPClient } from '@/lib/jmap/client-interface';
 import type { EmailPushConfig, Mailbox } from '@/lib/jmap/types';
-import { DEFAULT_RELAY_BASE_URL } from '@/lib/push-relays';
+import { DEFAULT_RELAY_BASE_URL, WEB_PUSH_DISABLED } from '@/lib/push-relays';
 import { IS_LITE } from '@/lib/lite';
 import {
   EMPTY_NOTIFICATION_MUTES,
@@ -331,6 +331,7 @@ export function isWebPushSupported(): boolean {
   // No service worker is registered in the static Lite build (see
   // components/service-worker-registration.tsx), so push cannot be enabled.
   if (IS_LITE) return false;
+  if (WEB_PUSH_DISABLED) return false; // REOSA: kein Relay eines Dritten
   return (
     'serviceWorker' in navigator &&
     'PushManager' in window &&

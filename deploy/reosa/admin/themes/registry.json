@@ -1,0 +1,17 @@
+{
+  "themes": [
+    {
+      "id": "reosa-aurora",
+      "name": "Aurora",
+      "version": "1.0.0",
+      "author": "davdxpx/reosa-mail",
+      "description": "Warme Flächen, Blau nur als Marke und Fokus, Hanken Grotesk",
+      "variants": ["light", "dark"],
+      "enabled": true,
+      "installedAt": "2026-10-21T00:00:00.000Z",
+      "updatedAt": "2026-10-21T00:00:00.000Z",
+      "hasSkin": true,
+      "contentHash": "a34c2d662df60982c93d058cf68d0103699c6618cc9d2e2b9c8baa6576332edc"
+    }
+  ]
+}
