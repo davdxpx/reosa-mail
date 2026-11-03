@@ -17,6 +17,8 @@
   <a href="https://discord.gg/tYCujymGrT">Discord</a>
 </p>
 
+> **Fork für REOSA.** Dieses Repository (`davdxpx/reosa-mail`) ist ein Fork von Bulwark Webmail für das Webmail der Plattform REOSA. Was hier anders ist und wie es betrieben wird, steht unten unter [Betrieb bei REOSA](#betrieb-bei-reosa). Alles andere in dieser Datei ist die Beschreibung von Bulwark.
+
 Bulwark Webmail is a self-hosted webmail client for [Stalwart Mail Server](https://stalw.art/). It talks to Stalwart over JMAP and puts mail, calendar, contacts and files behind one login, with one set of settings and one admin dashboard.
 
 <p align="center">
@@ -160,3 +162,81 @@ Contributors can use AI tools too, as long as they use capable, current models a
 ## Acknowledgments
 
 Thanks to [root-fr/jmap-webmail](https://github.com/root-fr/jmap-webmail/) and [@ma2t](https://github.com/ma2t) for the groundwork this project builds upon.
+
+## Betrieb bei REOSA
+
+Das Webmail der Plattform unter `mail.<domain>` (Owner-Entscheidung E11, Namen nach E17; Spec im Repo der Plattform: `reosa-docs/30-email/06-mailboxes.md` und `08-operations.md`). Es zeigt Personen ihr eigenes Postfach auf dem Mailserver Stalwart, sonst nichts.
+
+### Drei Grenzen
+
+1. **Eigene Origin.** Das Webmail läuft nie in einer Sitzung der Konsole oder von REOSA Sales. Fremdes HTML neben einer Sitzung der Plattform wäre die größte Angriffsfläche eines Webmails.
+2. **Nur JMAP mit Stalwart.** Kein Zugang zur Datenbank der Plattform, kein Verwaltungs-Zugang zum Mailserver, kein Schlüssel, der fremde Postfächer öffnet (die Impersonation von Bulwark bleibt aus, `BULWARK_JWT_AUTH_SECRET` und `BULWARK_STALWART_MASTER_*` werden nie gesetzt).
+3. **Nur das Postfach der angemeldeten Person.** Funktionsadressen bleiben Arbeitslisten in der Konsole der Plattform.
+
+### Wie es läuft
+
+Als vierter Dienst `webmail` der Deploy-Einheit `compose.email.yml` im Repo der Plattform, neben `email`, `stalwart` und `clamav`. Gebaut wird `Dockerfile.reosa` aus diesem Repo über einen entfernten Build-Kontext mit fest gepinntem Commit; eine neue Fassung ist ein Commit hier und danach eine angehobene Kennung in `tooling/scripts/compose-units.ts` der Plattform (`bun gen:compose`). Traefik beendet TLS für `mail.<domain>` (HTTP-Router, Domain am Dienst in Coolify, Port 3000). Lebenszeichen: `/api/health` (`HEALTHCHECK` im Abbild).
+
+### Anmeldung
+
+**Mit `REOSA_SSO_REQUIRED=true` nur über die Plattform** (Identity Platform, `reosa-docs/02-architecture/identity-platform.md` im Repo der Plattform). Das Webmail ist dort ein registrierter OAuth-Client; ohne Sitzung leitet es sofort zum Anmeldedienst der Plattform und kommt danach auf genau die aufgerufene Seite zurück. Eine eigene Anmeldeseite, ein Passwort, ein zweiter Faktor, ein zweites Konto, eine Kopplung mit der Mobil-App oder eine Impersonation gibt es dann nicht; die Routen dafür antworten serverseitig mit `403` oder `404` (`lib/reosa/sso-gate.ts`, Test daneben). Fehlt die Konfiguration des Ausstellers, meldet sich niemand an (fail closed, `503`). Abmelden beendet nur das Webmail; abmelden überall wirkt über die Plattform.
+
+Ohne den Schalter (Vorgabe, solange Stalwart die Tokens der Plattform noch nicht annimmt, E18): Anmeldung mit der Adresse des Postfachs und dem **Postfach-Passwort**, das die Person in ihrem Konto der Plattform festlegt.
+
+| Variable | Wert bei REOSA mit Anmeldung über die Plattform |
+|---|---|
+| `REOSA_SSO_REQUIRED`, `OAUTH_ENABLED`, `OAUTH_ONLY`, `AUTO_SSO_ENABLED` | `true` |
+| `OAUTH_ISSUER_URL` | der Issuer des Anmeldedienstes, `https://sb.<apex>/auth/v1` |
+| `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET` | aus der Registry der Plattform (`reosa-webmail`), das Geheimnis nur in Coolify |
+| `OAUTH_SCOPES` | `openid email offline_access` |
+| `REOSA_SSO_CALLBACK_LOCALE` | `de` (Rückweg `https://mail.<domain>/de/auth/callback`, genau einer) |
+
+### JMAP: zwei Wege
+
+| Wer | Adresse | Warum |
+|---|---|---|
+| Browser | `JMAP_SERVER_URL` = `https://<REOS_MAIL_HOSTNAME>` (Traefik reicht TLS roh an Stalwart durch) | Stalwart erlaubt JMAP aus dem Browser nur der Origin `https://mail.<domain>` (feste CORS-Kopfzeilen im Plan des Mailservers, gemessen auch an 204, 307 und 401) |
+| Server des Webmails | `JMAP_SERVER_INTERNAL_URL` = `http://stalwart:8080` im Netz des Stapels | Über den öffentlichen Namen käme der Container mit einer privaten Absenderadresse an, und Stalwart weist auf 443 jede Verbindung aus einem privaten Netz ab (`403`). |
+
+Die Sitzung von Stalwart nennt absolute Adressen mit dem öffentlichen Namen (`https://<REOS_MAIL_HOSTNAME>/jmap/`). Der Browser nimmt sie so, der Server legt sie zuerst auf die geprüfte Origin um (`rebaseApiUrl` von Bulwark) und schreibt sie beim Abruf auf die interne Adresse um (`lib/reosa/internal-jmap-url.ts`). Umgeschrieben wird nur, was auf die Origin von `JMAP_SERVER_URL` zielt.
+
+### Umgebung, die die Plattform setzt
+
+| Variable | Wert bei REOSA |
+|---|---|
+| `JMAP_SERVER_URL` | `https://${REOS_MAIL_HOSTNAME}` |
+| `JMAP_SERVER_INTERNAL_URL` | `http://stalwart:8080` |
+| `APP_NAME`, `APP_SHORT_NAME`, `APP_DESCRIPTION` | aus dem Produktnamen der Plattform (`REOSA_BRAND_PRODUCT_NAME`) |
+| `LOGIN_COMPANY_NAME` | `REOSA_BRAND_LEGAL_ENTITY` |
+| `LOGIN_WEBSITE_URL`, `LOGIN_IMPRINT_URL`, `LOGIN_PRIVACY_POLICY_URL` | Startseite, `/legal/imprint`, `/legal/privacy` unter `REOSA_BRAND_APEX_DOMAIN` |
+| `FAVICON_URL`, `PWA_ICON_URL`, Logos | `https://<apex>/icon.svg` der Plattform |
+| `SOURCE_CODE_URL` | dieses Repo am gebauten Commit (AGPL-3.0 Abschnitt 13) |
+| `GIT_COMMIT` (Bau) | der gebaute Commit, sichtbar unter Einstellungen > Über |
+
+Alles andere bringt `Dockerfile.reosa` als sichere Vorgabe mit.
+
+### Was abgeschaltet ist, und warum
+
+| Schalter | Vorgabe in `Dockerfile.reosa` | Grund |
+|---|---|---|
+| Alles an Dritte | `NO_THIRD_PARTY_TRAFFIC=true` (Schalter von Bulwark seit 1.17) | Telemetrie, Update-Prüfung, Push-Relay, Verzeichnis der Erweiterungen, Symbole der Absender, Übersetzung über MyMemory, Karten, WKD, Beispiel-Bilder; ersetzt die früheren eigenen Schalter `TRANSLATE_PROXY`, `SENDER_FAVICONS`, `NEXT_PUBLIC_PUSH_RELAY_URL=off` |
+| Telemetrie, Suche nach Updates | zusätzlich `BULWARK_TELEMETRY=off`, `BULWARK_UPDATE_CHECK=off` | nichts an Dritte |
+| Connector von Bulwark | `CONNECTOR_ENABLED=false` | kein fremder Name in Links |
+| Eigener Server auf der Anmeldeseite | `ALLOW_CUSTOM_JMAP_ENDPOINT=false` | genau ein Mailserver |
+| Verwaltungs-Oberfläche | `STALWART_ADMIN_ACCESS=off`, kein `ADMIN_PASSWORD` | ohne beides gibt es keinen Weg hinein; mit `JMAP_SERVER_URL` bleibt auch der Einrichtungs-Assistent aus |
+| Passwort, zweiter Faktor, App-Passwörter am Mailserver | `STALWART_FEATURES=false`, `STALWART_JMAP_PASSTHROUGH_ENABLED=false` | das Postfach-Passwort setzt die Plattform; ihr Abgleich überschriebe jede Änderung hier |
+| Erweiterungen, eigene Themes, eingebettete Seiten | Richtlinie `deploy/reosa/admin/policy.json` | keine Erweiterungen von außen |
+
+Filterregeln (Sieve), Abwesenheitsnotiz, Kalender und Kontakte bleiben, soweit Stalwart sie anbietet.
+
+### Einstellungen auf dem Server
+
+Signaturen, Vorlagen und die übrigen Einstellungen einer Person liegen verschlüsselt unter `/app/data/settings`. Jedes Laden zählt als Nutzung; was `SETTINGS_RETENTION_DAYS` (Vorgabe 180) Tage ungenutzt ist, löscht das Webmail beim Start und danach täglich (`lib/reosa/settings-retention.ts`). Im geteilten Speicher von Bulwark (`SHARED_STORE_URL`) greift die Frist nicht; das Protokoll sagt es beim Start.
+
+### Aussehen
+
+Theme `reosa-aurora` (`deploy/reosa/admin/themes/`): die Farben der Aurora-Sprache der Plattform, Hanken Grotesk, als Vorgabe der Richtlinie. Name, Logos und Links kommen aus der Umgebung, nie aus dem Code. Nach einer Änderung an der CSS die Prüfsumme `contentHash` in `registry.json` neu rechnen; `lib/reosa/__tests__/deploy-files.test.ts` bricht sonst.
+
+### Eigene Änderungen und Abgleich mit Bulwark
+
+Die Schicht steht in [`deploy/reosa/OVERLAY.md`](deploy/reosa/OVERLAY.md) (für Menschen) und [`deploy/reosa/overlay.json`](deploy/reosa/overlay.json) (für den Vertragstest `lib/reosa/__tests__/overlay-contract.test.ts`). `main` ist ein unveränderter Spiegel von Bulwark, gebaut wird aus `reosa/integration` am gepinnten Commit. Jede Stelle in einer Datei von Bulwark ist mit `REOSA` markiert (`git grep -n REOSA`). Der Ablauf eines Upstream-Syncs steht in `OVERLAY.md`; der Workflow `reosa-upstream-sync.yml` öffnet ihn als Pull Request im Fork und löst nie selbst einen Konflikt.

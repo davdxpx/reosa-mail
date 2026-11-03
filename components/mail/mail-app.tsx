@@ -5308,7 +5308,8 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
             </div>
             )}
 
-            {(searchQuery || !isFilterEmpty(searchFilters)) && !activeIsLoading && !isScheduledView && (
+            {/* With no results the list's own empty state says so; a second line here doubled it on phones. */}
+            {(searchQuery || !isFilterEmpty(searchFilters)) && !activeIsLoading && !isScheduledView && activeEmails.length > 0 && (
               <div className="px-4 py-1.5 text-xs text-muted-foreground border-b border-border bg-muted/20">
                 {activeHasMore
                   ? t("advanced_search.results_found_more", { count: activeEmails.length })
@@ -5419,6 +5420,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                   void handleBatchForwardAsAttachment();
                 }}
                 onClearSearch={() => void handleClearSearch()}
+                onRetry={() => void handleManualRefresh()}
                 onCompose={() => {
                   void withComposeGate('compose', {}, () => {
                     startFreshComposerSession();

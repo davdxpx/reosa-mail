@@ -50,6 +50,8 @@ export interface ConfigData {
   embeddedMode: boolean;
   parentOrigin: string;
   sourceCodeUrl: string;
+  /** REOSA: Anmeldung nur über die Plattform (lib/reosa/sso-gate.ts). */
+  reosaSsoRequired?: boolean;
   /** Accessibility and help links (lib/help-links.ts); '' hides a link. */
   accessibilityStatementUrl: string;
   accessibilityFeedbackUrl: string;
@@ -209,6 +211,7 @@ export function useConfig(): AppConfig {
     embeddedMode: configCache?.embeddedMode || false,
     parentOrigin: configCache?.parentOrigin || '',
     sourceCodeUrl: configCache?.sourceCodeUrl || '',
+    ...(configCache?.reosaSsoRequired ? { reosaSsoRequired: true } : {}),
     accessibilityStatementUrl: configCache?.accessibilityStatementUrl || '',
     accessibilityFeedbackUrl: configCache?.accessibilityFeedbackUrl || '',
     helpUrl: configCache?.helpUrl || '',
@@ -262,6 +265,7 @@ export function useConfig(): AppConfig {
         embeddedMode: configCache.embeddedMode,
         parentOrigin: configCache.parentOrigin,
         sourceCodeUrl: configCache.sourceCodeUrl,
+        ...(configCache.reosaSsoRequired ? { reosaSsoRequired: true } : {}),
         accessibilityStatementUrl: configCache.accessibilityStatementUrl,
         accessibilityFeedbackUrl: configCache.accessibilityFeedbackUrl,
         helpUrl: configCache.helpUrl,
@@ -316,6 +320,7 @@ export function useConfig(): AppConfig {
           embeddedMode: data.embeddedMode,
           parentOrigin: data.parentOrigin,
           sourceCodeUrl: data.sourceCodeUrl,
+          ...(data.reosaSsoRequired === true ? { reosaSsoRequired: true } : {}),
           accessibilityStatementUrl: data.accessibilityStatementUrl,
           accessibilityFeedbackUrl: data.accessibilityFeedbackUrl,
           helpUrl: data.helpUrl,

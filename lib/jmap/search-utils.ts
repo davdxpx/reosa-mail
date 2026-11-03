@@ -295,6 +295,22 @@ export function isFilterEmpty(filters: SearchFilters): boolean {
   );
 }
 
+/**
+ * Which empty state the message list shows when it has no rows: a failed
+ * load is never "no emails", the Unread filter alone says "no unread
+ * emails", any other search or filter says "no results", and only an
+ * unfiltered, successfully loaded folder is really empty.
+ */
+export type EmptyListKind = 'load_failed' | 'no_unread' | 'no_results' | 'empty';
+
+export function emptyListKind(input: { searchQuery: string; filters: SearchFilters; loadError: string | null }): EmptyListKind {
+  if (input.loadError) return 'load_failed';
+  const query = input.searchQuery.trim();
+  if (!query && input.filters.isUnread === true && isFilterEmpty({ ...input.filters, isUnread: null })) return 'no_unread';
+  if (query || !isFilterEmpty(input.filters)) return 'no_results';
+  return 'empty';
+}
+
 export function activeFilterCount(filters: SearchFilters): number {
   let count = 0;
   if (filters.from) count++;

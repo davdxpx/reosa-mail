@@ -1,0 +1,7 @@
+/* REOSA: Schrift der Aurora-Sprache, Hanken Grotesk. Die Schrift liefert das
+   Webmail selbst aus (next/font, --font-hanken), kein Abruf bei einem Dritten. */
+body[data-theme-skin="reosa-aurora"] {
+  font-family: var(--font-hanken, "Hanken Grotesk"), ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
+}

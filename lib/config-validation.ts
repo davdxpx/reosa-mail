@@ -66,6 +66,8 @@ const configValidators = {
   embeddedMode: isBoolean,
   parentOrigin: isString,
   sourceCodeUrl: isString,
+  // REOSA: Anmeldung nur über die Plattform (lib/reosa/sso-gate.ts).
+  reosaSsoRequired: (value): value is boolean | undefined => value === undefined || typeof value === 'boolean',
   accessibilityStatementUrl: isString,
   accessibilityFeedbackUrl: isString,
   helpUrl: isString,

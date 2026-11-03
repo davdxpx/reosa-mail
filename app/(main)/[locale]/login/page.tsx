@@ -42,6 +42,8 @@ import { HelpLinks } from "@/components/layout/help-links";
 import { LoginSkeleton } from "@/components/boot-skeleton/login-skeleton";
 import { Block } from "@/components/boot-skeleton/kit";
 import { consumeSessionEnd, type SessionEndReason } from "@/lib/session-policy/sign-out-reason";
+import { ReosaSsoLanding } from "@/components/reosa/sso-landing"; // REOSA
+import { SourceCodeLink } from "@/components/reosa/source-code-link"; // REOSA
 
 /** The domain of a complete address (`user@example.com`), or '' while it is still being typed. */
 function completeAddressDomain(username: string): string {
@@ -221,7 +223,7 @@ function LoginPageContent() {
   usePrefetchMailView(!isMobileHandoff);
   const { login, loginWithToken, loginDemo, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   const { theme, setTheme, initializeTheme } = useThemeStore(useShallow((s) => ({ theme: s.theme, setTheme: s.setTheme, initializeTheme: s.initializeTheme })));
-  const { appName, jmapServerUrl: configuredServerUrl, oauthEnabled, oauthOnly, oauthClientId: globalOauthClientId, oauthIssuerUrl: globalOauthIssuerUrl, oauthScopes, oauthResource, rememberMeEnabled, devMode, demoMode, loginLogoLightUrl, loginLogoDarkUrl, loginCompanyName, loginImprintUrl, loginPrivacyPolicyUrl, loginWebsiteUrl, loginUsernamePlaceholder, loginLogoMaxHeight, loginLogoMaxWidth, loginShowHeading, loginShowSubtitle, loginShowTotp, loginShowTokenLogin, loginShowRememberMe, loginShowVersion, isLoading: configLoading, error: configError, autoSsoEnabled, embeddedMode: _embeddedMode, allowCustomJmapEndpoint, jmapServers, jmapServerAutoPickByDomain } = useConfig();
+  const { appName, jmapServerUrl: configuredServerUrl, oauthEnabled, oauthOnly, oauthClientId: globalOauthClientId, oauthIssuerUrl: globalOauthIssuerUrl, oauthScopes, oauthResource, rememberMeEnabled, devMode, demoMode, loginLogoLightUrl, loginLogoDarkUrl, loginCompanyName, loginImprintUrl, loginPrivacyPolicyUrl, loginWebsiteUrl, loginUsernamePlaceholder, loginLogoMaxHeight, loginLogoMaxWidth, loginShowHeading, loginShowSubtitle, loginShowTotp, loginShowTokenLogin, loginShowRememberMe, loginShowVersion, isLoading: configLoading, error: configError, autoSsoEnabled, embeddedMode: _embeddedMode, allowCustomJmapEndpoint, jmapServers, jmapServerAutoPickByDomain, reosaSsoRequired } = useConfig();
   const resolvedTheme = useThemeStore((s) => s.resolvedTheme);
   const colorModeLocked = usePolicyStore((s) => s.getColorModePolicy().locked);
 
@@ -1150,6 +1152,11 @@ function LoginPageContent() {
     </label>
   );
 
+  // REOSA: im Betrieb bei REOSA kein Formular, nur die Anmeldung über die Plattform.
+  if (reosaSsoRequired) {
+    return <ReosaSsoLanding locale={params.locale as string} loading={oauthLoading || (!oauthDiscoveryDone && !ssoError)} error={ssoError} addAccount={isAddAccountMode} onStart={() => { void startServerSideSso(); }} homeHref={`${getPathPrefix(params.locale as string)}/${params.locale}`} />;
+  }
+
   // Demo-only mode: show only a large demo login button
   if (demoMode && !isAddAccountMode) {
     return (
@@ -1298,6 +1305,8 @@ function LoginPageContent() {
               </div>
             )}
             <HelpLinks listClassName="justify-center" />
+            {/* REOSA: AGPL-3.0 Abschnitt 13, sichtbar auf der Anmeldeseite */}
+            <SourceCodeLink className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
             {loginShowVersion && <VersionBadge />}
           </div>
         </div>
@@ -1914,6 +1923,8 @@ function LoginPageContent() {
             </div>
           )}
           <HelpLinks listClassName="justify-center" />
+          {/* REOSA: AGPL-3.0 Abschnitt 13, sichtbar auf der Anmeldeseite */}
+          <SourceCodeLink className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
           {loginShowVersion && <VersionBadge />}
         </div>
       </div>

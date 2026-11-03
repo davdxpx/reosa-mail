@@ -13,6 +13,7 @@ import { hasSessionSecret } from '@/lib/auth/session-secret';
 import { configManager } from '@/lib/admin/config-manager';
 import { rejectCrossOriginRequest } from '@/lib/security/same-origin';
 import { isMobileCodeChallenge, mobileHandoffTarget } from '@/lib/auth/mobile-handoff';
+import { reosaCallbackUri, reosaSsoRequired, reosaSsoStartRefusal } from '@/lib/reosa/sso-gate'; // REOSA
 
 const SSO_PENDING_COOKIE = 'sso_pending';
 const SSO_PENDING_MAX_AGE = 300; // 5 minutes
@@ -45,6 +46,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SESSION_SECRET is required for SSO' }, { status: 500 });
     }
 
+    const body = await request.json();
+    // REOSA: keine Mobil-Übergabe, kein Erneut-Anmelden, kein zweiter Slot; ein fester Rückweg.
+    if (reosaSsoStartRefusal(body ?? {})) return NextResponse.json({ error: 'sso_required' }, { status: 403 });
+    if (reosaSsoRequired() && body && typeof body.redirect_uri === 'string') {
+      try { body.redirect_uri = reosaCallbackUri(new URL(body.redirect_uri).origin, request.nextUrl.basePath); } catch { /* geprüft unten */ }
+    }
     const {
       redirect_uri,
       locale,
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
       purpose: rawPurpose,
       slot: rawSlot,
       remember,
-    } = await request.json();
+    } = body;
 
     // `reauth` drives the step-up flow for device pairing: it forces a fresh
     // IdP login (prompt=login) and the /reauth/sso/complete handler sets the

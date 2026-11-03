@@ -43,7 +43,7 @@ import { markSelectionReadWithUndo, runBatchEmailAction, setSelectionTagWithUndo
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { TagDisplayContext, useMeasuredTagDisplay } from "@/hooks/use-tag-display";
 import { SearchChips } from "@/components/search/search-chips";
-import { isFilterEmpty, DEFAULT_SEARCH_FILTERS } from "@/lib/jmap/search-utils";
+import { isFilterEmpty, DEFAULT_SEARCH_FILTERS, emptyListKind } from "@/lib/jmap/search-utils";
 import { getOwnAddresses } from "@/lib/filters/quick-rule-target";
 import { emitThreadExpand } from "@/lib/plugin-thread-expand";
 import { normalizeAddress } from "@/lib/filters/quick-rules";
@@ -84,6 +84,8 @@ interface EmailListProps {
   onBatchForwardAsAttachment?: () => void;
   /** The empty search state's "Clear search". */
   onClearSearch?: () => void;
+  /** The failed-load state's "Try again". */
+  onRetry?: () => void;
   /** The empty Drafts folder's "Compose". */
   onCompose?: () => void;
   onMarkAsRead?: (email: Email, read: boolean) => void;
@@ -155,6 +157,7 @@ export function EmailList({
   onForwardAsAttachment,
   onBatchForwardAsAttachment,
   onClearSearch,
+  onRetry,
   onCompose,
   onMarkAsRead,
   onToggleStar,
@@ -181,6 +184,7 @@ export function EmailList({
   const tNotifications = useTranslations('notifications');
   const tViewer = useTranslations('email_viewer');
   const tSidebar = useTranslations('sidebar');
+  const tErrors = useTranslations('errors');
   const mountainViewList = useSettingsStore((state) => state.interfaceLayout === 'mountain-view');
   const undo = undoLabels(tNotifications);
   const tRemove = useTranslations('email_list.confirm_remove');
@@ -213,6 +217,7 @@ export function EmailList({
     clearSearchFilters,
     advancedSearch,
     searchQuery,
+    loadError,
     isUnifiedView,
     unifiedRole,
   } = useEmailStore(useShallow((state) => ({
@@ -243,6 +248,7 @@ export function EmailList({
     clearSearchFilters: state.clearSearchFilters,
     advancedSearch: state.advancedSearch,
     searchQuery: state.searchQuery,
+    loadError: state.error,
     isUnifiedView: state.isUnifiedView,
     unifiedRole: state.unifiedRole,
   })));
@@ -559,6 +565,7 @@ export function EmailList({
     [selectedMailbox, effectiveMailboxRole],
   );
   const isSearching = !!searchQuery || !isFilterEmpty(searchFilters);
+  const emptyKind = emptyListKind({ searchQuery, filters: searchFilters, loadError });
   const emptySlotProps = useMemo(() => ({ ...listSlotProps, searching: isSearching }), [listSlotProps, isSearching]);
 
   // The store reports a refused message (a read-only shared folder) through
@@ -1219,16 +1226,36 @@ export function EmailList({
           <div className="flex flex-col items-center justify-center h-full">
             {/* R9: an empty search offers Clear search; Drafts, which the
                 user fills, offers Compose. */}
-            <EmptyState
-              icon={isScheduledView ? CalendarClock : isSearching ? SearchX : MailX}
-              title={isScheduledView ? t('no_scheduled_emails') : isSearching ? t('no_search_results') : t('no_emails')}
-              description={isScheduledView ? t('no_scheduled_emails_description') : isSearching ? t('no_search_results_description') : t('no_emails_description')}
-              actions={!isScheduledView && isSearching && onClearSearch ? (
-                <Button size="sm" variant="outline" onClick={onClearSearch}>{tSidebar('clear_search')}</Button>
-              ) : !isScheduledView && !isSearching && effectiveMailboxRole === 'drafts' && onCompose ? (
-                <Button size="sm" onClick={onCompose}>{tSidebar('compose')}</Button>
-              ) : undefined}
-            />
+            {isScheduledView ? (
+              <EmptyState icon={CalendarClock} title={t('no_scheduled_emails')} description={t('no_scheduled_emails_description')} />
+            ) : emptyKind === 'load_failed' ? (
+              <EmptyState
+                icon={MailX}
+                title={tNotifications('error_loading')}
+                actions={onRetry ? <Button size="sm" variant="outline" onClick={onRetry}>{tErrors('try_again')}</Button> : undefined}
+              />
+            ) : emptyKind === 'no_unread' ? (
+              <EmptyState
+                icon={MailX}
+                title={t('no_unread_results')}
+                description={t('no_unread_results_description')}
+                actions={onClearSearch ? <Button size="sm" variant="outline" onClick={onClearSearch}>{t('clear_filter')}</Button> : undefined}
+              />
+            ) : emptyKind === 'no_results' ? (
+              <EmptyState
+                icon={SearchX}
+                title={t('no_search_results')}
+                description={t('no_search_results_description')}
+                actions={onClearSearch ? <Button size="sm" variant="outline" onClick={onClearSearch}>{tSidebar('clear_search')}</Button> : undefined}
+              />
+            ) : (
+              <EmptyState
+                icon={MailX}
+                title={t('no_emails')}
+                description={t('no_emails_description')}
+                actions={effectiveMailboxRole === 'drafts' && onCompose ? <Button size="sm" onClick={onCompose}>{tSidebar('compose')}</Button> : undefined}
+              />
+            )}
             <PluginSlot name="message-list-empty" className="mt-4 w-full max-w-md px-4" extraProps={emptySlotProps} />
           </div>
         ) : (

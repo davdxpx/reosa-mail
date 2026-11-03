@@ -1,0 +1,35 @@
+{
+  "features": {
+    "pluginsEnabled": false,
+    "pluginsUploadEnabled": false,
+    "requirePluginApproval": true,
+    "themesEnabled": true,
+    "userThemesEnabled": false,
+    "sidebarAppsEnabled": false,
+    "debugModeEnabled": false,
+    "accountArchiveEnabled": false,
+    "accountArchivePasswordsEnabled": false,
+    "customFromEnabled": false,
+    "unifiedCrossAccountEnabled": false
+  },
+  "restrictions": {
+    "senderFavicons": { "locked": true, "value": false }
+  },
+  "defaults": {
+    "senderFavicons": false
+  },
+  "themePolicy": {
+    "disabledBuiltinThemes": [],
+    "disabledThemes": [],
+    "defaultThemeId": "reosa-aurora",
+    "defaultColorMode": null,
+    "lockColorMode": false
+  },
+  "forceEnabledPlugins": [],
+  "approvedPlugins": [],
+  "forceEnabledThemes": [],
+  "pushRelays": [],
+  "pushRelayUrl": "",
+  "pushRelayUrlLocked": false,
+  "defaultSidebarApps": []
+}

@@ -1,0 +1,155 @@
+{
+  "$comment": "REOSA: maschinenlesbare Änderungslandkarte des Forks (deploy/reosa/OVERLAY.md). Jeder Eintrag in 'hooks' ist eine Datei von Bulwark, die der Fork anfasst; 'markers' ist die Zahl der Zeilen mit 'REOSA' darin. Der Vertragstest lib/reosa/__tests__/overlay-contract.test.ts prüft beides nach jedem Upstream-Sync.",
+  "upstream": {
+    "repository": "https://github.com/bulwarkmail/webmail",
+    "base": "03e7cd86f102bc66a589b7b02d49523b00ae633a",
+    "version": "1.20.0"
+  },
+  "ownFiles": [
+    "Dockerfile.reosa",
+    "CLAUDE.md",
+    "deploy/reosa/OVERLAY.md",
+    "deploy/reosa/overlay.json",
+    "deploy/reosa/admin/policy.json",
+    "deploy/reosa/admin/themes/registry.json",
+    "deploy/reosa/admin/themes/reosa-aurora.css",
+    "deploy/reosa/admin/themes/reosa-aurora.skin.css",
+    "components/reosa/source-code-link.tsx",
+    "components/reosa/sso-landing.tsx",
+    "lib/reosa/internal-jmap-url.ts",
+    "lib/reosa/settings-retention.ts",
+    "lib/reosa/sso-gate.ts",
+    "lib/reosa/sso-response.ts"
+  ],
+  "hooks": [
+    {
+      "file": "proxy.ts",
+      "markers": 2,
+      "why": "Tor der Anmeldung über die Plattform vor jeder Route",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/sso-gate.test.ts"
+    },
+    {
+      "file": "app/api/auth/sso/start/route.ts",
+      "markers": 2,
+      "why": "keine Mobil-Übergabe, kein Erneut-Anmelden, kein Slot, ein fester Rückweg",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/sso-gate.test.ts"
+    },
+    {
+      "file": "app/api/auth/stalwart-context/route.ts",
+      "markers": 2,
+      "why": "nur Bearer des Ausstellers, nie Basic",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/sso-gate.test.ts"
+    },
+    {
+      "file": "app/api/config/route.ts",
+      "markers": 2,
+      "why": "Schalter für die Anmeldeseite",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/overlay-contract.test.ts"
+    },
+    {
+      "file": "hooks/use-config.ts",
+      "markers": 1,
+      "why": "Schalter für die Anmeldeseite",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/overlay-contract.test.ts"
+    },
+    {
+      "file": "app/(main)/[locale]/login/page.tsx",
+      "markers": 5,
+      "why": "kein Formular im REOSA-Betrieb; Link „Quelltext“ auch auf der Anmeldeseite mit Passwort (AGPL-3.0 Abschnitt 13)",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/overlay-contract.test.ts"
+    },
+    {
+      "file": "app/(main)/[locale]/auth/callback/page.tsx",
+      "markers": 3,
+      "why": "Tiefenlink nur als interner Pfad",
+      "switch": "immer",
+      "test": "lib/reosa/__tests__/sso-gate.test.ts"
+    },
+    {
+      "file": "lib/auth/verify-jmap-auth.ts",
+      "markers": 3,
+      "why": "Abrufe des Servers über das Netz des Stapels",
+      "switch": "JMAP_SERVER_INTERNAL_URL",
+      "test": "lib/reosa/__tests__/reosa-switches.test.ts"
+    },
+    {
+      "file": "lib/stalwart/server-fetch.ts",
+      "markers": 2,
+      "why": "Abrufe des Servers über das Netz des Stapels",
+      "switch": "JMAP_SERVER_INTERNAL_URL",
+      "test": "lib/reosa/__tests__/reosa-switches.test.ts"
+    },
+    {
+      "file": "lib/settings-sync.ts",
+      "markers": 2,
+      "why": "ein Laden zählt als Nutzung",
+      "switch": "SETTINGS_RETENTION_DAYS",
+      "test": "lib/reosa/__tests__/settings-retention.test.ts"
+    },
+    {
+      "file": "instrumentation.node.ts",
+      "markers": 1,
+      "why": "Löschlauf der Einstellungen am Scheduler-Leader",
+      "switch": "SETTINGS_RETENTION_DAYS",
+      "test": "lib/reosa/__tests__/settings-retention.test.ts"
+    },
+    {
+      "file": "README.md",
+      "markers": 1,
+      "why": "Abschnitt „Betrieb bei REOSA“",
+      "switch": "keiner",
+      "test": "lib/reosa/__tests__/overlay-contract.test.ts"
+    },
+    {
+      "file": "lib/config-validation.ts",
+      "markers": 1,
+      "why": "Schalter für die Anmeldeseite in der Prüfung der Config",
+      "switch": "REOSA_SSO_REQUIRED",
+      "test": "lib/reosa/__tests__/overlay-contract.test.ts"
+    }
+  ],
+  "replacedByUpstream": [
+    {
+      "was": "TRANSLATE_PROXY=off (Patch an app/api/translate/route.ts)",
+      "now": "NO_THIRD_PARTY_TRAFFIC=true",
+      "since": "1.17"
+    },
+    {
+      "was": "SENDER_FAVICONS=off (Patch an app/api/favicon/route.ts)",
+      "now": "NO_THIRD_PARTY_TRAFFIC=true",
+      "since": "1.17"
+    },
+    {
+      "was": "NEXT_PUBLIC_PUSH_RELAY_URL=off (Patches an lib/push-relays.ts, lib/web-push.ts)",
+      "now": "NO_THIRD_PARTY_TRAFFIC=true (relayAllowed)",
+      "since": "1.17"
+    }
+  ],
+  "dockerfileRequired": {
+    "NO_THIRD_PARTY_TRAFFIC": "true",
+    "BULWARK_TELEMETRY": "off",
+    "BULWARK_UPDATE_CHECK": "off",
+    "CONNECTOR_ENABLED": "false",
+    "ALLOW_CUSTOM_JMAP_ENDPOINT": "false",
+    "STALWART_ADMIN_ACCESS": "off",
+    "STALWART_FEATURES": "false",
+    "STALWART_JMAP_PASSTHROUGH_ENABLED": "false",
+    "ADMIN_CONFIG_READONLY": "true",
+    "SETTINGS_RETENTION_DAYS": "180",
+    "REOSA_SSO_REQUIRED": "false"
+  },
+  "dockerfileForbidden": [
+    "BULWARK_JWT_AUTH_SECRET",
+    "BULWARK_STALWART_MASTER_USER",
+    "BULWARK_STALWART_MASTER_PASSWORD",
+    "ADMIN_PASSWORD",
+    "DEMO_MODE",
+    "DEV_MOCK_JMAP"
+  ]
+}

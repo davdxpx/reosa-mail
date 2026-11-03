@@ -13,6 +13,7 @@ import {
 } from '@/lib/admin/domain-branding';
 import { isNoThirdPartyTrafficOn } from '@/lib/admin/third-party-mode';
 import { browserErrorSettings } from '@/lib/error-reporting/settings';
+import { reosaSsoRequired } from '@/lib/reosa/sso-gate'; // REOSA
 
 /**
  * Runtime configuration endpoint
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
       embeddedMode: !!allowedFrameAncestors && allowedFrameAncestors !== "'none'",
       parentOrigin: configManager.get<string>('parentOrigin', ''),
       sourceCodeUrl: httpUrlOrEmpty(configManager.get<string>('sourceCodeUrl', '')),
+      reosaSsoRequired: reosaSsoRequired(), // REOSA (lib/reosa/sso-gate.ts)
       // Accessibility and help links, per domain like the legal links.
       accessibilityStatementUrl: httpUrlOrEmpty(branded<string>('accessibilityStatementUrl', '')),
       accessibilityFeedbackUrl: httpOrMailtoOrEmpty(branded<string>('accessibilityFeedbackUrl', '')),
