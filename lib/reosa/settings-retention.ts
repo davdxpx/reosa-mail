@@ -70,12 +70,22 @@ export async function purgeStaleSettings(dir: string, maxAgeDays: number, now: n
   return removed;
 }
 
-let timer: ReturnType<typeof setInterval> | null = null;
+// Auf globalThis wie die Takte von Bulwark (lib/telemetry/instant-errors.ts):
+// einer je Prozess, gleich welche Modul-Kopie startet oder stoppt.
+const KEY = Symbol.for('reosa.settings-retention');
+interface RetentionState {
+  timer: ReturnType<typeof setInterval> | null;
+}
+function state(): RetentionState {
+  const g = globalThis as typeof globalThis & { [KEY]?: RetentionState };
+  return (g[KEY] ??= { timer: null });
+}
 
 /** Beim Start und danach täglich, nur auf dem Leader; nie mit Namen oder Inhalt im Protokoll. */
 export async function startSettingsRetention(env: Record<string, string | undefined> = process.env): Promise<void> {
   const days = settingsRetentionDays(env);
-  if (days === null || timer) return;
+  const s = state();
+  if (days === null || s.timer) return;
   const { isSharedMode } = await import('@/lib/shared-store');
   if (isSharedMode()) {
     console.warn('Webmail-Einstellungen: geteilter Speicher, die Frist von SETTINGS_RETENTION_DAYS greift nicht.');
@@ -93,13 +103,14 @@ export async function startSettingsRetention(env: Record<string, string | undefi
       });
   };
   run();
-  timer = setInterval(run, DAY_MS);
-  timer.unref?.();
+  s.timer = setInterval(run, DAY_MS);
+  s.timer.unref?.();
 }
 
 export function stopSettingsRetention(): void {
-  if (timer) clearInterval(timer);
-  timer = null;
+  const s = state();
+  if (s.timer) clearInterval(s.timer);
+  s.timer = null;
 }
 
 /** Für den Scheduler-Leader von Bulwark (instrumentation.node.ts): läuft auf genau einem Replikat. */
