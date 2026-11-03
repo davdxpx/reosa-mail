@@ -77,3 +77,14 @@ die Zeilen der REOSA-Haken in `proxy.ts` und `lib/stalwart/server-fetch.ts`
 | Merge in einen Sync-Zweig von `reosa/integration` | Konflikt in `lib/stalwart/server-fetch.ts`, Merge hält an; `lib/reosa/**` bleibt vollständig |
 | Konflikt achtlos zugunsten von Upstream gelöst | Vertragstest rot: `lib/stalwart/server-fetch.ts: REOSA-Markierungen: expected 0 to be greater than or equal to 2` |
 | Upstream mit neu geschriebener Geschichte (wie am 03.11.2026) | `main` ist kein Vorgänger mehr, der schnelle Vorlauf des Workflows bricht ab, nichts wird geändert |
+
+## Mobil-Prüfung vom 03.11.2026 (Screenshot des Owners, Stand 2026.10.22)
+
+| Befund | Stand auf `reosa/integration` |
+|---|---|
+| „Keine Ergebnisse gefunden“ zweimal (Trefferzeile über leerer Liste) | behoben in c2337ba: die Trefferzeile steht nur bei Treffern |
+| Leere Liste nennt keine Ursache (nur Ungelesen, Suche, Ladefehler, leerer Ordner) | behoben in c2337ba (`emptyListKind`), mit „Filter aufheben“ bzw. „Erneut versuchen“; Test `email-list-empty-states.test.tsx` |
+| Suchfeld zeigt „(drücken Sie /)“ auch auf Touch-Geräten | mit Bulwark 1.20.0 erledigt: das Suchfeld zeigt „Suchen...“, der Schlüssel `search_placeholder_hint` wird nirgends mehr gelesen |
+
+Offen: Screenshots von 320 bis 768 px und am Gerät (Android, iOS), nach dem Bau
+des Abbilds aus `reosa/integration`.
