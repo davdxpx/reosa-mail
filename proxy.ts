@@ -16,6 +16,7 @@ import { getWopiEditorOrigins } from "./lib/wopi/discovery";
 import { detectSetupState } from "./lib/setup/state";
 import { isServedOverHttps } from "./lib/security/request-protocol";
 import { bootGateResponse } from "./lib/shared-store/boot-gate";
+import { reosaGateResponse } from "./lib/reosa/sso-response"; // REOSA
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -223,6 +224,10 @@ export async function proxy(request: NextRequest) {
   // decision about the request.
   const rawPathname = request.nextUrl.pathname;
   const pathname = routePathOf(rawPathname);
+
+  // REOSA: im Betrieb bei REOSA nur die Anmeldung über die Plattform (lib/reosa/sso-gate.ts).
+  const reosaBlock = reosaGateResponse(request.method, pathname, request.nextUrl.searchParams);
+  if (reosaBlock) return reosaBlock;
 
   if (setupState === "bootstrap") {
     // Wizard active. Redirect HTML pages to /setup; let asset/internal

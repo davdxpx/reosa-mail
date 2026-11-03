@@ -15,6 +15,7 @@ import { confirmMobileHandoffCodeUrl } from "@/lib/auth/mobile-handoff-client";
 import { MobileHandoffConsent } from "@/components/auth/mobile-handoff-consent";
 import { MailSkeleton } from "@/components/boot-skeleton/mail-skeleton";
 import { useSkeletonLabels } from "@/components/boot-skeleton/use-skeleton-labels";
+import { safeReturnPath } from "@/lib/reosa/sso-gate"; // REOSA
 
 function OAuthCallbackInner() {
   const router = useRouter();
@@ -133,7 +134,7 @@ function OAuthCallbackInner() {
               const saved = sessionStorage.getItem('redirect_after_login');
               if (saved) {
                 sessionStorage.removeItem('redirect_after_login');
-                redirectTo = saved;
+                redirectTo = safeReturnPath(saved, redirectTo); // REOSA: nur ein interner Pfad
               }
             } catch { /* sessionStorage may be unavailable */ }
             router.push(toRouterPath(redirectTo));
@@ -243,7 +244,7 @@ function OAuthCallbackInner() {
               const saved = sessionStorage.getItem('redirect_after_login');
               if (saved) {
                 sessionStorage.removeItem('redirect_after_login');
-                redirectTo = saved;
+                redirectTo = safeReturnPath(saved, redirectTo); // REOSA: nur ein interner Pfad
               }
             } catch { /* sessionStorage may be unavailable */ }
             router.push(toRouterPath(redirectTo));

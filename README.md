@@ -179,7 +179,17 @@ Als vierter Dienst `webmail` der Deploy-Einheit `compose.email.yml` im Repo der 
 
 ### Anmeldung
 
-Mit der Adresse des Postfachs und dem **Postfach-Passwort**, das die Person in ihrem Konto der Plattform festlegt (dasselbe wie in Mailprogrammen). Eine Anmeldung über die Plattform (SSO) ist gemessen und offen: Stalwart 0.16.24 nimmt Tokens eines fremden Ausstellers nur an, wenn ein OIDC-Verzeichnis das Verzeichnis ALLER Anmeldungen ist, und dann scheitert jede Anmeldung mit Passwort, auch die der Dienstkonten und der Mailprogramme (Messung und Wege: E18 in `reosa-docs/30-email/11-open-decisions.md`).
+**Mit `REOSA_SSO_REQUIRED=true` nur über die Plattform** (Identity Platform, `reosa-docs/02-architecture/identity-platform.md` im Repo der Plattform). Das Webmail ist dort ein registrierter OAuth-Client; ohne Sitzung leitet es sofort zum Anmeldedienst der Plattform und kommt danach auf genau die aufgerufene Seite zurück. Eine eigene Anmeldeseite, ein Passwort, ein zweiter Faktor, ein zweites Konto, eine Kopplung mit der Mobil-App oder eine Impersonation gibt es dann nicht; die Routen dafür antworten serverseitig mit `403` oder `404` (`lib/reosa/sso-gate.ts`, Test daneben). Fehlt die Konfiguration des Ausstellers, meldet sich niemand an (fail closed, `503`). Abmelden beendet nur das Webmail; abmelden überall wirkt über die Plattform.
+
+Ohne den Schalter (Vorgabe, solange Stalwart die Tokens der Plattform noch nicht annimmt, E18): Anmeldung mit der Adresse des Postfachs und dem **Postfach-Passwort**, das die Person in ihrem Konto der Plattform festlegt.
+
+| Variable | Wert bei REOSA mit Anmeldung über die Plattform |
+|---|---|
+| `REOSA_SSO_REQUIRED`, `OAUTH_ENABLED`, `OAUTH_ONLY`, `AUTO_SSO_ENABLED` | `true` |
+| `OAUTH_ISSUER_URL` | der Issuer des Anmeldedienstes, `https://sb.<apex>/auth/v1` |
+| `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET` | aus der Registry der Plattform (`reosa-webmail`), das Geheimnis nur in Coolify |
+| `OAUTH_SCOPES` | `openid email offline_access` |
+| `REOSA_SSO_CALLBACK_LOCALE` | `de` (Rückweg `https://mail.<domain>/de/auth/callback`, genau einer) |
 
 ### JMAP: zwei Wege
 
@@ -209,10 +219,8 @@ Alles andere bringt `Dockerfile.reosa` als sichere Vorgabe mit.
 
 | Schalter | Vorgabe in `Dockerfile.reosa` | Grund |
 |---|---|---|
-| Telemetrie, Suche nach Updates | `BULWARK_TELEMETRY=off`, `BULWARK_UPDATE_CHECK=off` | nichts an Dritte |
-| Übersetzung | `TRANSLATE_PROXY=off` (eigener Schalter) | ohne LibreTranslate ginge der Text einer Mail an MyMemory |
-| Symbole der Absender | `SENDER_FAVICONS=off` (eigener Schalter), in der Richtlinie fest aus | die Domains der Absender gingen an DuckDuckGo |
-| Web Push | `NEXT_PUBLIC_PUSH_RELAY_URL=off` beim Bau (eigener Schalter) | der eingebaute Relay ist ein Dienst eines Dritten |
+| Alles an Dritte | `NO_THIRD_PARTY_TRAFFIC=true` (Schalter von Bulwark seit 1.17) | Telemetrie, Update-Prüfung, Push-Relay, Verzeichnis der Erweiterungen, Symbole der Absender, Übersetzung über MyMemory, Karten, WKD, Beispiel-Bilder; ersetzt die früheren eigenen Schalter `TRANSLATE_PROXY`, `SENDER_FAVICONS`, `NEXT_PUBLIC_PUSH_RELAY_URL=off` |
+| Telemetrie, Suche nach Updates | zusätzlich `BULWARK_TELEMETRY=off`, `BULWARK_UPDATE_CHECK=off` | nichts an Dritte |
 | Connector von Bulwark | `CONNECTOR_ENABLED=false` | kein fremder Name in Links |
 | Eigener Server auf der Anmeldeseite | `ALLOW_CUSTOM_JMAP_ENDPOINT=false` | genau ein Mailserver |
 | Verwaltungs-Oberfläche | `STALWART_ADMIN_ACCESS=off`, kein `ADMIN_PASSWORD` | ohne beides gibt es keinen Weg hinein; mit `JMAP_SERVER_URL` bleibt auch der Einrichtungs-Assistent aus |
@@ -221,15 +229,14 @@ Alles andere bringt `Dockerfile.reosa` als sichere Vorgabe mit.
 
 Filterregeln (Sieve), Abwesenheitsnotiz, Kalender und Kontakte bleiben, soweit Stalwart sie anbietet.
 
+### Einstellungen auf dem Server
+
+Signaturen, Vorlagen und die übrigen Einstellungen einer Person liegen verschlüsselt unter `/app/data/settings`. Jedes Laden zählt als Nutzung; was `SETTINGS_RETENTION_DAYS` (Vorgabe 180) Tage ungenutzt ist, löscht das Webmail beim Start und danach täglich (`lib/reosa/settings-retention.ts`). Im geteilten Speicher von Bulwark (`SHARED_STORE_URL`) greift die Frist nicht; das Protokoll sagt es beim Start.
+
 ### Aussehen
 
 Theme `reosa-aurora` (`deploy/reosa/admin/themes/`): die Farben der Aurora-Sprache der Plattform, Hanken Grotesk, als Vorgabe der Richtlinie. Name, Logos und Links kommen aus der Umgebung, nie aus dem Code. Nach einer Änderung an der CSS die Prüfsumme `contentHash` in `registry.json` neu rechnen; `lib/reosa/__tests__/deploy-files.test.ts` bricht sonst.
 
 ### Eigene Änderungen und Abgleich mit Bulwark
 
-Eigene Änderungen sind klein und mit `REOSA` markiert (`git grep -n REOSA`), damit Updates von Bulwark übernehmbar bleiben:
-
-- `Dockerfile.reosa`, `deploy/reosa/`, `lib/reosa/`, `components/reosa/`, `CLAUDE.md` (eigene Dateien)
-- `lib/stalwart/server-fetch.ts`, `lib/auth/verify-jmap-auth.ts` (interne Adresse), `lib/push-relays.ts`, `lib/web-push.ts` (Push aus), `app/api/translate/route.ts`, `app/api/favicon/route.ts` (Schalter), `app/(main)/[locale]/login/page.tsx` (Link „Quelltext“), `locales/de/common.json` (eine Zeile)
-
-Abgleich: `git remote add upstream https://github.com/bulwarkmail/webmail.git`, `git fetch upstream --tags`, auf einem Zweig `git merge <tag>`, Konflikte nur in den markierten Stellen auflösen, `npm run lint`, `npm run typecheck`, `npx vitest run`. Danach einen Tag setzen und den Commit in der Plattform anheben.
+Die Schicht steht in [`deploy/reosa/OVERLAY.md`](deploy/reosa/OVERLAY.md) (für Menschen) und [`deploy/reosa/overlay.json`](deploy/reosa/overlay.json) (für den Vertragstest `lib/reosa/__tests__/overlay-contract.test.ts`). `main` ist ein unveränderter Spiegel von Bulwark, gebaut wird aus `reosa/integration` am gepinnten Commit. Jede Stelle in einer Datei von Bulwark ist mit `REOSA` markiert (`git grep -n REOSA`). Der Ablauf eines Upstream-Syncs steht in `OVERLAY.md`; der Workflow `reosa-upstream-sync.yml` öffnet ihn als Pull Request im Fork und löst nie selbst einen Konflikt.

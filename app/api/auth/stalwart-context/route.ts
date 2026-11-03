@@ -16,6 +16,7 @@ import { loginClientAddress } from '@/lib/auth/client-address';
 import { LOGIN_BUDGET_RETRY_AFTER_SECONDS, reserveLoginAttempt } from '@/lib/auth/verify-budget';
 import { isStoreUnavailable, storeUnavailableResponse } from '@/lib/auth/store-unavailable';
 import { recordStoredCredentialStatus } from '@/lib/stalwart/stored-credential-budget';
+import { reosaStalwartContextRefusal } from '@/lib/reosa/sso-gate'; // REOSA
 
 function getSlot(request: NextRequest, bodySlot: unknown): number {
   if (typeof bodySlot === 'number' && bodySlot >= 0 && bodySlot < MAX_ACCOUNT_SLOTS) {
@@ -38,6 +39,8 @@ export async function POST(request: NextRequest) {
   let upstreamTrusted = false;
   try {
     const { serverUrl, username, authHeader, slot: bodySlot } = await request.json();
+    // REOSA: im Betrieb bei REOSA nur ein Bearer-Token des Ausstellers, nie Basic.
+    if (reosaStalwartContextRefusal(authHeader)) return NextResponse.json({ error: 'sso_required' }, { status: 403 });
 
     if (!serverUrl || !username || !authHeader) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
