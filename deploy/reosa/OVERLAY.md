@@ -65,3 +65,15 @@ Bei einem Konflikt öffnet er den PR mit dem Hinweis und ohne Lösung; er
 Der vorherige geprüfte Commit bleibt erreichbar (Tag oder `release/reosa-*`).
 Zurück heißt: `WEBMAIL_COMMIT` auf ihn setzen, `bun gen:compose`, deployen.
 Der Stand vor dem Sync vom 03.11.2026 ist `2903cb1` (`release/reosa-2026.10.22`).
+
+## Probe vom 03.11.2026: ein simulierter Sync mit Konflikt
+
+In einem Wegwerf-Klon: ein erfundener Upstream-Commit auf `main`, der genau
+die Zeilen der REOSA-Haken in `proxy.ts` und `lib/stalwart/server-fetch.ts`
+ändert, dann der Ablauf oben.
+
+| Fall | Ergebnis |
+|---|---|
+| Merge in einen Sync-Zweig von `reosa/integration` | Konflikt in `lib/stalwart/server-fetch.ts`, Merge hält an; `lib/reosa/**` bleibt vollständig |
+| Konflikt achtlos zugunsten von Upstream gelöst | Vertragstest rot: `lib/stalwart/server-fetch.ts: REOSA-Markierungen: expected 0 to be greater than or equal to 2` |
+| Upstream mit neu geschriebener Geschichte (wie am 03.11.2026) | `main` ist kein Vorgänger mehr, der schnelle Vorlauf des Workflows bricht ab, nichts wird geändert |
