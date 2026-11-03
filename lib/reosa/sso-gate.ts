@@ -169,8 +169,9 @@ export function safeReturnPath(raw: string | null | undefined, fallback: string)
   // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f\\]/.test(raw)) return fallback;
   try {
-    const resolved = new URL(raw, 'https://internal.invalid');
-    if (resolved.origin !== 'https://internal.invalid') return fallback;
+    // Eine Basis ohne Host: Löst sich der Pfad zu einem Host auf, war er keiner.
+    const resolved = new URL(raw, 'file:///');
+    if (resolved.protocol !== 'file:' || resolved.host !== '') return fallback;
     return `${resolved.pathname}${resolved.search}${resolved.hash}`;
   } catch {
     return fallback;
