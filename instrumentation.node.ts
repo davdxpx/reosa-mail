@@ -133,6 +133,8 @@ migrateLegacyAdminLayout()
       { name: "telemetry", start: startScheduler, stop: stopScheduler },
       { name: "telemetry-errors", start: instantErrors.startInstantErrors, stop: instantErrors.stopInstantErrors },
       { name: "version-check", start: versionCheck.startScheduler, stop: versionCheck.stopScheduler },
+      // REOSA: ungenutzte Einstellungen löschen (lib/reosa/settings-retention.ts).
+      { name: "reosa-settings-retention", ...(await import("./lib/reosa/settings-retention")).settingsRetentionJob },
     ]);
   })
   .catch((err) => {

@@ -2,7 +2,8 @@ import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'node:
 import path from 'node:path';
 import { logger } from '@/lib/logger';
 import { getSessionSecret } from '@/lib/auth/session-secret';
-import { getStore, type CollectionOptions } from '@/lib/shared-store';
+import { getStore, isSharedMode, type CollectionOptions } from '@/lib/shared-store';
+import { markSettingsUsed } from '@/lib/reosa/settings-retention'; // REOSA
 import { isStoreUnavailable, isStoredDataUnreadable, StoredDataUnreadableError } from '@/lib/stored-data-errors';
 import { moveUnreadableAside } from '@/lib/stored-data-quarantine';
 
@@ -98,6 +99,8 @@ export async function loadUserSettings(username: string, serverUrl: string): Pro
     throw new StoredDataUnreadableError('settings', { cause: error });
   }
   if (!stored) return null;
+  // REOSA: ein Laden zählt als Nutzung (lib/reosa/settings-retention.ts).
+  if (!isSharedMode()) void markSettingsUsed(path.join(getSettingsDir(), `${settingsId(username, serverUrl)}.enc`));
   try {
     return decryptSettings(stored.data);
   } catch (error) {
