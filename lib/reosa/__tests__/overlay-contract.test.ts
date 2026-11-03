@@ -123,6 +123,12 @@ describe('Overlay des Forks', () => {
     expect(read('LICENSE')).toContain('GNU AFFERO GENERAL PUBLIC LICENSE');
     expect(existsSync(path.join(ROOT, 'NOTICE'))).toBe(true);
     expect(read('components/reosa/sso-landing.tsx')).toContain('<SourceCodeLink');
+    // Auch die Anmeldeseite mit Passwort (SSO aus) zeigt den Link, in beiden Layouts.
+    const login = read('app/(main)/[locale]/login/page.tsx');
+    expect(login.split('<SourceCodeLink').length - 1).toBeGreaterThanOrEqual(2);
+    // Die deutsche Bezeichnung bleibt „Quelltext“ (eine Zeile in locales/de/common.json).
+    const de = JSON.parse(read('locales/de/common.json').replace(/^\uFEFF/, ''));
+    expect(de.settings.advanced.about.source_code).toBe('Quelltext');
     expect(read('README.md')).toContain('Betrieb bei REOSA');
   });
 });

@@ -43,6 +43,7 @@ import { LoginSkeleton } from "@/components/boot-skeleton/login-skeleton";
 import { Block } from "@/components/boot-skeleton/kit";
 import { consumeSessionEnd, type SessionEndReason } from "@/lib/session-policy/sign-out-reason";
 import { ReosaSsoLanding } from "@/components/reosa/sso-landing"; // REOSA
+import { SourceCodeLink } from "@/components/reosa/source-code-link"; // REOSA
 
 /** The domain of a complete address (`user@example.com`), or '' while it is still being typed. */
 function completeAddressDomain(username: string): string {
@@ -1304,6 +1305,8 @@ function LoginPageContent() {
               </div>
             )}
             <HelpLinks listClassName="justify-center" />
+            {/* REOSA: AGPL-3.0 Abschnitt 13, sichtbar auf der Anmeldeseite */}
+            <SourceCodeLink className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
             {loginShowVersion && <VersionBadge />}
           </div>
         </div>
@@ -1920,6 +1923,8 @@ function LoginPageContent() {
             </div>
           )}
           <HelpLinks listClassName="justify-center" />
+          {/* REOSA: AGPL-3.0 Abschnitt 13, sichtbar auf der Anmeldeseite */}
+          <SourceCodeLink className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
           {loginShowVersion && <VersionBadge />}
         </div>
       </div>

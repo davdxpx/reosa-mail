@@ -59,8 +59,8 @@
     },
     {
       "file": "app/(main)/[locale]/login/page.tsx",
-      "markers": 2,
-      "why": "kein Formular im REOSA-Betrieb",
+      "markers": 5,
+      "why": "kein Formular im REOSA-Betrieb; Link „Quelltext“ auch auf der Anmeldeseite mit Passwort (AGPL-3.0 Abschnitt 13)",
       "switch": "REOSA_SSO_REQUIRED",
       "test": "lib/reosa/__tests__/overlay-contract.test.ts"
     },
@@ -128,11 +128,6 @@
     {
       "was": "NEXT_PUBLIC_PUSH_RELAY_URL=off (Patches an lib/push-relays.ts, lib/web-push.ts)",
       "now": "NO_THIRD_PARTY_TRAFFIC=true (relayAllowed)",
-      "since": "1.17"
-    },
-    {
-      "was": "Link „Quelltext“ auf der Anmeldeseite (Patch an login/page.tsx)",
-      "now": "SOURCE_CODE_URL unter Einstellungen > Über, dazu components/reosa/sso-landing.tsx",
       "since": "1.17"
     }
   ],

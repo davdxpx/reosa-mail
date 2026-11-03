@@ -5,7 +5,8 @@
 // AGPL-3.0 Abschnitt 13: Wer eine veränderte Fassung im Netz anbietet, bietet
 // allen, die mit ihr arbeiten, den Quelltext an. Upstream steht der Link unter
 // Einstellungen > Über; im Betrieb bei REOSA steht er zusätzlich auf der
-// Anmeldeseite (components/reosa/sso-landing.tsx). Die Adresse kommt aus
+// Anmeldeseite, mit Passwort (login/page.tsx) wie mit SSO
+// (components/reosa/sso-landing.tsx). Die Adresse kommt aus
 // SOURCE_CODE_URL (die genaue Fassung, die läuft); die Plattform setzt sie in
 // compose.email.yml immer. Fehlt sie trotzdem, steht der Hinweis ohne Link da,
 // statt auf eine geratene Fassung zu zeigen.

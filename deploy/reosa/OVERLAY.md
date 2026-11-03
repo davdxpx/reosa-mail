@@ -27,7 +27,8 @@ Ein Sync von `main` ändert deshalb weder Abbild noch Produktion.
 | `app/api/auth/sso/start/route.ts` | keine Mobil-Übergabe, kein Erneut-Anmelden, kein Slot, ein fester Rückweg | `REOSA_SSO_REQUIRED` | `sso-gate.test.ts` |
 | `app/api/auth/stalwart-context/route.ts` | nur Bearer des Ausstellers | `REOSA_SSO_REQUIRED` | `sso-gate.test.ts` |
 | `app/api/config/route.ts`, `hooks/use-config.ts`, `lib/config-validation.ts` | Schalter für die Anmeldeseite | `REOSA_SSO_REQUIRED` | `overlay-contract.test.ts` |
-| `app/(main)/[locale]/login/page.tsx` | kein Formular im REOSA-Betrieb | `REOSA_SSO_REQUIRED` | `overlay-contract.test.ts` |
+| `app/(main)/[locale]/login/page.tsx` | kein Formular im REOSA-Betrieb; Link „Quelltext“ auch auf der Anmeldeseite mit Passwort | `REOSA_SSO_REQUIRED` | `overlay-contract.test.ts` |
+| `locales/de/common.json` | eine Zeile: „Quelltext“ statt „Quellcode“ | keiner | `overlay-contract.test.ts` |
 | `app/(main)/[locale]/auth/callback/page.tsx` | Tiefenlink nur als interner Pfad | immer | `sso-gate.test.ts` |
 | `lib/auth/verify-jmap-auth.ts`, `lib/stalwart/server-fetch.ts` | Abrufe des Servers über das Netz des Stapels | `JMAP_SERVER_INTERNAL_URL` | `reosa-switches.test.ts` |
 | `lib/settings-sync.ts`, `instrumentation.node.ts` | ungenutzte Einstellungen nach 180 Tagen löschen | `SETTINGS_RETENTION_DAYS` | `settings-retention.test.ts` |
@@ -38,8 +39,10 @@ bleiben unverändert.
 
 **Durch Upstream ersetzt** (seit 1.17): die eigenen Schalter `TRANSLATE_PROXY`,
 `SENDER_FAVICONS`, `NEXT_PUBLIC_PUSH_RELAY_URL=off` durch
-`NO_THIRD_PARTY_TRAFFIC=true`, der Quelltext-Link der Anmeldeseite durch
-`SOURCE_CODE_URL` unter Einstellungen > Über (dazu auf der REOSA-Anmeldeseite).
+`NO_THIRD_PARTY_TRAFFIC=true`. Der Link „Quelltext“ bleibt eigener Patch: Upstream
+zeigt `SOURCE_CODE_URL` nur unter Einstellungen > Über, also erst nach der
+Anmeldung; AGPL-3.0 Abschnitt 13 und die Grenze 5 in `CLAUDE.md` verlangen ihn
+schon auf der Anmeldeseite, mit Passwort wie mit SSO.
 
 ## Ein Upstream-Sync
 
